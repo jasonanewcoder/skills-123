@@ -1,0 +1,6 @@
+# 宣发文档
+article/
+
+# ds file
+.DS_Store
+**/.DS_Store
