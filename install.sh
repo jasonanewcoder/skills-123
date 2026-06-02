@@ -5,7 +5,7 @@
 # One produces two, two produces three, three produces all things.
 #
 # Usage:
-#   curl -sL https://raw.githubusercontent.com/<user>/skills-123/main/install.sh | bash
+#   curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
 #   bash install.sh
 #===============================================================================
 

@@ -81,13 +81,13 @@ skills-123/
 ### 一键安装
 
 ```bash
-curl -sL https://raw.githubusercontent.com/<user>/skills-123/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
 ```
 
 ### 手动安装
 
 ```bash
-git clone https://github.com/<user>/skills-123.git
+git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123
 bash install.sh
 ```

@@ -48,7 +48,7 @@
 ## 🚀 설치
 
 ```bash
-git clone https://github.com/<user>/skills-123.git
+git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123
 bash install.sh
 ```

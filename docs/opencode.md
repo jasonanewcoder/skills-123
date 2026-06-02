@@ -14,7 +14,7 @@
 ### Linux / macOS
 
 ```bash
-git clone https://github.com/<user>/skills-123.git /tmp/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git /tmp/skills-123
 
 mkdir -p ~/.config/opencode/skills/skills-123
 cp /tmp/skills-123/skills/skills-123/SKILL.md ~/.config/opencode/skills/skills-123/SKILL.md
@@ -30,7 +30,7 @@ rm -rf /tmp/skills-123
 ### Symlink
 
 ```bash
-git clone https://github.com/<user>/skills-123.git ~/workspace/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p ~/.config/opencode/skills
 ln -s ~/workspace/skills-123/skills/skills-123 ~/.config/opencode/skills/skills-123
 ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.config/opencode/skills/skills-123-suggest

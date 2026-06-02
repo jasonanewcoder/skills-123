@@ -17,7 +17,7 @@ Skills in Codex live under `~/.agents/skills/<skill-name>/SKILL.md`.
 
 ```bash
 # Clone skills-123
-git clone https://github.com/<user>/skills-123.git /tmp/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git /tmp/skills-123
 
 # Copy into Codex skills directory
 mkdir -p ~/.agents/skills/skills-123
@@ -36,7 +36,7 @@ rm -rf /tmp/skills-123
 ### Method 2: Symlink (for keeping up-to-date)
 
 ```bash
-git clone https://github.com/<user>/skills-123.git ~/workspace/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p ~/.agents/skills
 ln -s ~/workspace/skills-123/skills/skills-123 ~/.agents/skills/skills-123
 ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.agents/skills/skills-123-suggest

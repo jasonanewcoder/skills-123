@@ -14,7 +14,7 @@
 ### Method 1: Direct copy
 
 ```bash
-git clone https://github.com/<user>/skills-123.git /tmp/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git /tmp/skills-123
 
 mkdir -p .windsurf/skills/skills-123
 cp /tmp/skills-123/skills/skills-123/SKILL.md .windsurf/skills/skills-123/SKILL.md
@@ -30,7 +30,7 @@ rm -rf /tmp/skills-123
 ### Method 2: Symlink
 
 ```bash
-git clone https://github.com/<user>/skills-123.git ~/workspace/skills-123
+git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p .windsurf/skills
 ln -s ~/workspace/skills-123/skills/skills-123 .windsurf/skills/skills-123
 ln -s ~/workspace/skills-123/skills/skills-123-suggest .windsurf/skills/skills-123-suggest

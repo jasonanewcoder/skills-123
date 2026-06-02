@@ -98,13 +98,13 @@ skills-123/
 ### One-command install
 
 ```bash
-curl -sL https://raw.githubusercontent.com/<user>/skills-123/main/install.sh | bash
+curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
 ```
 
 ### Manual install
 
 ```bash
-git clone https://github.com/<user>/skills-123.git
+git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123
 bash install.sh
 ```
