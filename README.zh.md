@@ -79,18 +79,19 @@ skills-123 是一个 **元技能**（meta-skill）——用技能来使用技能
 
 ---
 
-## 🚀 安装
+## 🚀 快速开始
 
 ```bash
-# 一键
+# 安装
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
 
-# 或手动
-git clone https://github.com/jasonanewcoder/skills-123.git
-cd skills-123 && bash install.sh
+# 重启 Claude Code，然后直接说：
+"帮我写一个dashboard网页"
+"Build me a project tracker"
+"不動産の管理画面を作って"
 ```
 
-重启 Claude Code，两个新技能出现：`skills-123`（代理）和 `skills-123-suggest`（侦察兵）。
+skills-123 自动检测任务意图。不用触发词，不用配置。
 
 ### 其他 Agent
 
@@ -130,12 +131,6 @@ cd skills-123 && bash install.sh
 "搜索 PostgreSQL 备份的 skill"
 ```
 
-### 侦察兵——`skills-123-suggest`
-
-时刻关注任务型对话，发现相关社区技能时温柔提醒：
-
-> 💡 GitHub 上有 **dashboard 设计** 的社区技能。要我用 skills-123 找到最好的并应用吗？
-
 ---
 
 ## 🛡️ 安全
@@ -172,7 +167,6 @@ skills-123/
 │   │   ├── scripts/                 搜索 · 评估 · 安装 · 安全扫描
 │   │   ├── references/              评分体系 · 安全模式 · 搜索源
 │   │   └── cache/                   （自动创建）
-│   └── skills-123-suggest/SKILL.md  💡 侦察兵（被动建议）
 ├── example/                         📂 5 种语言的效果对比
 │   ├── zh/ en/ ja/ ko/ es/          Prompt + 两个输出
 │   └── screenshots/                 10 张对比截图

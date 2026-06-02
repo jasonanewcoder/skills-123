@@ -80,7 +80,7 @@ git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```
 
-Reinicia Claude Code. Dos skills: `skills-123` (proxy) y `skills-123-suggest` (explorador).
+Reinicia Claude Code. `skills-123` estará activo.
 
 | Agent | Guía | |
 |-------|------|:---:|

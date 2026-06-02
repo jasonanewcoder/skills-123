@@ -83,18 +83,19 @@ You get a distinctive, enterprise-grade dashboard.
 
 ---
 
-## 🚀 Install
+## 🚀 Quick Start
 
 ```bash
-# One command
+# Install
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
 
-# Or manual
-git clone https://github.com/jasonanewcoder/skills-123.git
-cd skills-123 && bash install.sh
+# Restart Claude Code, then just ask:
+"帮我写一个dashboard网页"
+"Build me a project tracker"
+"不動産の管理画面を作って"
 ```
 
-Restart Claude Code. Two skills appear: `skills-123` (the proxy) and `skills-123-suggest` (the scout).
+skills-123 activates automatically when it detects you want to build something. No trigger words. No configuration.
 
 ### Other agents
 
@@ -134,34 +135,26 @@ Just talk normally. skills-123 detects task intent in any language and activates
 "Search for PostgreSQL backup skills"
 ```
 
-### The Scout — `skills-123-suggest`
-
-Watches for task prompts and nudges when relevant skills exist:
-
-> 💡 GitHub has community skills for **dashboard design**. Want me to find and apply the best ones?
-
 ### Power Users: Guaranteed Triggering via Hook
 
-The default trigger depends on the model reading the skill description and deciding to invoke it. For **guaranteed triggering on every prompt**, add a hook to your Claude Code settings:
+The default trigger depends on the model reading the skill description and deciding to invoke it. For **guaranteed triggering**, configure a `PreToolUse` hook that fires before every file write:
 
 ```json
-// ~/.claude/settings.json or .claude/settings.local.json
+// .claude/settings.local.json (project-level)
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "",
-        "hooks": [{
-          "type": "command",
-          "command": "echo 'skills-123-suggest' | claude --skill skills-123-suggest"
-        }]
-      }
-    ]
+    "PreToolUse": [{
+      "matcher": "Write|Edit",
+      "hooks": [{
+        "type": "command",
+        "command": "echo '[skills-123 guard] Have you searched for community skills?'"
+      }]
+    }]
   }
 }
 ```
 
-This bypasses the model's trigger decision entirely — every interaction is checked. Trade-off: increases latency by ~1-2s per prompt.
+This bypasses the model's trigger decision — the system reminds the model before any file write to search first. Full documentation and tuning options: [`references/hook-config.md`](skills/skills-123/references/hook-config.md)
 
 ---
 
@@ -195,11 +188,10 @@ Skill found → Scan content
 ```
 skills-123/
 ├── skills/
-│   ├── skills-123/SKILL.md          🤖 The Skill Proxy (Proxy + Install modes)
-│   │   ├── scripts/                 Search · evaluate · install · security scan
-│   │   ├── references/              Scoring rubric · safety patterns · sources
-│   │   └── cache/                   (auto-created)
-│   └── skills-123-suggest/SKILL.md  💡 The Scout (passive suggestion)
+│   └── skills-123/SKILL.md          🤖 The Skill Proxy (Proxy + Install modes)
+│       ├── scripts/                 Search · evaluate · install · security scan
+│       ├── references/              Scoring rubric · safety patterns · sources
+│       └── cache/                   (auto-created)
 ├── example/                         📂 Before/after in 5 languages
 │   ├── zh/ en/ ja/ ko/ es/          Prompt + both outputs
 │   └── screenshots/                 10 PNG comparisons

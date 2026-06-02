@@ -4,6 +4,11 @@
 #
 # Usage: echo '{"keywords":["kubernetes","deploy"]}' | search-github.sh
 # Output: JSON array of candidate repos
+#
+# NOTE: This script generates search query suggestions for WebSearch.
+# When WebSearch is unreachable, use the local fallback instead:
+#   bash skills/skills-123/scripts/fetch-local.sh search "<keywords>"
+#   bash skills/skills-123/scripts/fetch-local.sh ddg "<keywords>"
 #===============================================================================
 
 set -euo pipefail

@@ -42,7 +42,6 @@ For each candidate, score on 5 dimensions (0-100):
 Show top 3-5 results with scores as a table. Always recommend #1.
 
 ### Installation
-If user wants to install, clone to ~/.aider/skills/<name>/ or suggest creating a CONVENTIONS.md entry.
 
 ### Safety Rules
 - NEVER tell the user to pipe curl to bash
@@ -103,7 +102,6 @@ Or just describe your need naturally — Aider will reference the CONVENTIONS.md
 | Directory-based skill structure | ❌ — flat conventions file |
 | Auto-trigger from description | ⚠️ — only if CONVENTIONS.md is loaded |
 | Shell scripts (`scripts/`) | ❌ — inline instructions only |
-| skills-123-suggest passive mode | ❌ — no background hooks |
 | Web search | ⚠️ — via `/web` command |
 
 **Key caveats:**

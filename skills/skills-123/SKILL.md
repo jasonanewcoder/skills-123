@@ -8,14 +8,41 @@ tools: Bash, WebSearch, WebFetch, Read, Write, Edit
 
 > One produces two, two produces three, three produces all things.
 
+## ⚠️ Mandatory Self-Check (Read Before Anything Else)
+
+**You are a meta-skill — a skill that discovers skills.** Your core job is to search for community knowledge before producing a deliverable. If you write code, create a file, design a UI, or output any artifact without first checking GitHub for relevant skills, **you have failed at your primary function.**
+
+Before you output any deliverable, pause and ask yourself:
+
+1. *"Did I search for community skills for this task?"*
+2. *"Could a skill from GitHub make this better?"*
+
+**If the answer to #1 is NO and #2 is YES → go back and search NOW, before writing a single line.**
+
+This applies to ALL deliverables — not just code. Articles, presentations, configs, designs, scripts, documentation. If the user asked you to produce something, search first.
+
+---
+
 ## Mode Selection
 
 ```
 User prompt →
   ├─ "install skill" / "find skills" / "search skill" → Install Mode
+  ├─ "--check" / "verify skills-123" / "test skills-123" → Self-Check Mode
   ├─ Concrete task? (build/create/write/setup/deploy/design + deliverable) → Proxy Mode
   └─ Pure chat / trivia / already handled by built-in skill → skip
 ```
+
+---
+
+## Self-Check Mode (--check)
+
+When the user asks to verify skills-123 is working ("--check", "verify skills-123 works", "test the skill"):
+
+1. Run a test search: `"dashboard" "Claude Code" skill GitHub`
+2. Report: number of results found, whether WebFetch is reachable (test one raw.githubusercontent.com URL), cache files present, skip-list entries
+3. If all checks pass: "✅ skills-123 is operational. [N] skills in cache, WebFetch reachable."
+4. If issues found: "⚠️ skills-123 found [issue]. [Suggestion for fix]."
 
 ---
 
@@ -27,10 +54,11 @@ Proxy mode fetches community skill knowledge from GitHub and injects it into con
 
 If the user wants a **deliverable** (webpage, script, config, dashboard, report, setup…) → proceed. Don't require specific technology names. "Make a dashboard" triggers just like "Deploy a Kubernetes cluster."
 
-### Step 2: Search (2-3 parallel WebSearch queries)
+### Step 2: Search (2-3 parallel queries, with local fallback)
 
 Extract the task **domain** (what they want, not what they named):
 
+**Primary (WebSearch):**
 ```
 Query 1: "<domain keywords>" "Claude Code" skill GitHub
 Query 2: "<domain keywords>" SKILL.md Claude site:github.com
@@ -38,20 +66,58 @@ Query 3: <alternative angle>
 ```
 
 Also check: `https://github.com/travisvn/awesome-claude-skills` for matching entries.
+
+**⚠️ Local fallback — if WebSearch fails or returns nothing:**
+```
+# GitHub repo search (no auth needed):
+bash skills/skills-123/scripts/fetch-local.sh search "<domain keywords>"
+
+# DuckDuckGo web search:
+bash skills/skills-123/scripts/fetch-local.sh ddg "<domain keywords> Claude Code skill"
+
+# Awesome-lists:
+bash skills/skills-123/scripts/fetch-local.sh awesome
+```
+This bypasses claude.ai's proxy entirely and uses your machine's network. Requires `curl` and `python3`.
+
 Collect up to 10 candidate repo URLs. **If 0 → exit silently, handle directly.**
 
-### Step 3: Fetch with Fallback (try each tier, stop when content obtained)
+### Step 3: Fetch with Fallback (each candidate, stop when content obtained)
 
-For the top 3-5 candidates, try to get their SKILL.md content. **Must use a fallback chain — one failure doesn't block the flow:**
+For the top 3-5 candidates, try to get their SKILL.md content. **Must use a fallback chain — one failure doesn't block the flow.**
+
+#### Layer A: WebFetch (goes through claude.ai proxy — try first)
 
 | Tier | Source | URL Pattern |
 |:----:|--------|-------------|
 | 1 | Raw GitHub (preferred) | `https://raw.githubusercontent.com/<owner>/<repo>/HEAD/SKILL.md` |
-| 2 | Raw GitHub (main branch) | `https://raw.githubusercontent.com/<owner>/<repo>/main/SKILL.md` |
-| 3 | GitHub API | `https://api.github.com/repos/<owner>/<repo>/contents/SKILL.md` (returns JSON with base64-encoded content — decode it) |
-| 4 | Degraded (search context) | Use the search result snippet, repo description, and README as partial knowledge |
+| 2 | Raw GitHub (main) | `https://raw.githubusercontent.com/<owner>/<repo>/main/SKILL.md` |
+| 3 | GitHub API | `https://api.github.com/repos/<owner>/<repo>/contents/SKILL.md` (decode base64 `content` field) |
 
-**Always try Tier 1 first. If it fails or is blocked, immediately try Tier 2, then 3. Tier 4 is always available as a degraded fallback.** Don't announce failures — just degrade gracefully.
+Try Tier 1 → 2 → 3 in order. If any succeeds, skip straight to quality gate.
+
+#### Layer B: Local curl (BYPASSES claude.ai proxy — mandatory when WebFetch fails)
+
+**If ALL WebFetch tiers fail for a candidate, do NOT skip it. Immediately retry with local curl:**
+
+```
+bash skills/skills-123/scripts/fetch-local.sh skill <owner/repo>
+```
+
+This single command tries raw→api→recursive-tree via your machine's local network. If it returns `"ok":true`, use the content exactly as if WebFetch had succeeded — feed it through the same quality gate (Step 4), same injection template (Step 5).
+
+**Layer B is not optional.** When WebFetch fails, local curl is the next tier, not degraded mode. WebFetch failures are often claude.ai proxy issues — the target server is reachable from your machine.
+
+#### Layer C: Degraded (last resort, only when Layer B also fails)
+
+Use search result snippets, repo description, and README as partial knowledge.
+
+```
+Fallback order (per candidate):
+  WebFetch Tier 1 → 2 → 3 → Local curl (Bash) → Degraded
+```
+
+**Never announce failures or tier switches. Just get the content and move on.**
 
 ### Step 4: Quality Gate (quick 3-check before injecting)
 
@@ -90,6 +156,12 @@ Then record to `~/.claude/skills/skills-123/cache/proxy-usage.json`:
 ```
 If the file doesn't exist, create it. On future searches, boost skills that appear in this log.
 
+**Negative feedback loop:** If the user indicates the result was poor ("that didn't help", "not what I wanted", etc.), record the skill to `~/.claude/skills/skills-123/cache/skip-list.json`:
+```json
+{"skill": "<name>", "repo": "<url>", "reason": "<brief>", "skipped_at": "<ISO timestamp>"}
+```
+Skills in the skip-list are excluded from future Proxy searches. Check this file during Step 2 (Search) and filter out any matches.
+
 ---
 
 ## Install Mode (on explicit request)
@@ -118,7 +190,7 @@ These patterns apply to both Proxy (quality gate) and Install (auto-reject):
 
 ## Quick Reference
 
-**Search sources:** GitHub topic search, code search, web search, awesome-lists (travisvn, onmyway133).
+**Search sources:** GitHub topic search, code search, web search, awesome-lists (travisvn, onmyway133). Local fallback via `scripts/fetch-local.sh` — bypasses claude.ai proxy.
 
 **Trusted orgs:** anthropics, vercel-labs, microsoft, cloudflare, hashicorp, tailwindlabs, supabase, railwayapp, netlify, temporalio, prisma.
 

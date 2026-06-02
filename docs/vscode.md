@@ -87,7 +87,6 @@ Copilot will follow the instructions block to search for and recommend skills.
 | YAML frontmatter triggers | ❌ — plain markdown instructions |
 | Auto-trigger from context | ⚠️ — only if instructions mention it |
 | Shell scripts | ❌ — inline instructions only |
-| skills-123-suggest passive mode | ❌ — no background triggers |
 | Security auto-scan | ⚠️ — manual via described patterns |
 
 **Key caveats:**

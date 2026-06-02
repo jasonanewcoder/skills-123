@@ -21,8 +21,6 @@ cp /tmp/skills-123/skills/skills-123/SKILL.md ~/.config/opencode/skills/skills-1
 cp -r /tmp/skills-123/skills/skills-123/scripts ~/.config/opencode/skills/skills-123/scripts
 cp -r /tmp/skills-123/skills/skills-123/references ~/.config/opencode/skills/skills-123/references
 
-mkdir -p ~/.config/opencode/skills/skills-123-suggest
-cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md ~/.config/opencode/skills/skills-123-suggest/SKILL.md
 
 rm -rf /tmp/skills-123
 ```
@@ -33,7 +31,6 @@ rm -rf /tmp/skills-123
 git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p ~/.config/opencode/skills
 ln -s ~/workspace/skills-123/skills/skills-123 ~/.config/opencode/skills/skills-123
-ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.config/opencode/skills/skills-123-suggest
 ```
 
 ## Usage

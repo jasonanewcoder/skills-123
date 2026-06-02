@@ -21,8 +21,6 @@ cp /tmp/skills-123/skills/skills-123/SKILL.md .windsurf/skills/skills-123/SKILL.
 cp -r /tmp/skills-123/skills/skills-123/scripts .windsurf/skills/skills-123/scripts
 cp -r /tmp/skills-123/skills/skills-123/references .windsurf/skills/skills-123/references
 
-mkdir -p .windsurf/skills/skills-123-suggest
-cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md .windsurf/skills/skills-123-suggest/SKILL.md
 
 rm -rf /tmp/skills-123
 ```
@@ -33,7 +31,6 @@ rm -rf /tmp/skills-123
 git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p .windsurf/skills
 ln -s ~/workspace/skills-123/skills/skills-123 .windsurf/skills/skills-123
-ln -s ~/workspace/skills-123/skills/skills-123-suggest .windsurf/skills/skills-123-suggest
 ```
 
 ### Method 3: Global installation
@@ -42,7 +39,6 @@ ln -s ~/workspace/skills-123/skills/skills-123-suggest .windsurf/skills/skills-1
 mkdir -p ~/.windsurf/skills
 # Copy skills-123 into global Windsurf skills
 cp -r ~/workspace/skills-123/skills/skills-123 ~/.windsurf/skills/
-cp -r ~/workspace/skills-123/skills/skills-123-suggest ~/.windsurf/skills/
 ```
 
 ## Usage
@@ -65,7 +61,6 @@ Windsurf detects SKILL.md files in `.windsurf/skills/` and loads them as availab
 | Multi-file skill directory | ✅ Supported |
 | Shell scripts (`scripts/`) | ⚠️ Execution requires approval |
 | References (`references/`) | ✅ Loaded on demand |
-| skills-123-suggest passive mode | ❓ Unconfirmed |
 | `WebSearch` tool | ⚠️ Via Cascade's web capability |
 | Auto-trigger from description | ⚠️ Partial (less reliable than Claude Code) |
 

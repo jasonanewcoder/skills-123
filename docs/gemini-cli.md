@@ -21,8 +21,6 @@ cp /tmp/skills-123/skills/skills-123/SKILL.md ~/.gemini/skills/skills-123/SKILL.
 cp -r /tmp/skills-123/skills/skills-123/scripts ~/.gemini/skills/skills-123/scripts
 cp -r /tmp/skills-123/skills/skills-123/references ~/.gemini/skills/skills-123/references
 
-mkdir -p ~/.gemini/skills/skills-123-suggest
-cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md ~/.gemini/skills/skills-123-suggest/SKILL.md
 
 rm -rf /tmp/skills-123
 ```
@@ -33,7 +31,6 @@ rm -rf /tmp/skills-123
 git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p ~/.gemini/skills
 ln -s ~/workspace/skills-123/skills/skills-123 ~/.gemini/skills/skills-123
-ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.gemini/skills/skills-123-suggest
 ```
 
 ## Usage
@@ -56,5 +53,4 @@ ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.gemini/skills/skills-1
 - Gemini CLI uses **Google Search grounding** instead of general WebSearch — search results may differ from Claude Code.
 - `WebFetch` may not be available; skill discovery relies primarily on Gemini's built-in knowledge and Google grounding.
 - Shell scripts (`scripts/`) are sandboxed. `install-from-github.sh` requires `--allow-exec` flag or manual approval.
-- The `skills-123-suggest` passive mode may not trigger as reliably due to different skill activation heuristics.
 - For the best search results, use Gemini 2.5 Pro or later (better web grounding).

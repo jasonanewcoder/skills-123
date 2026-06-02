@@ -80,7 +80,7 @@ git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```
 
-Claude Code を再起動。`skills-123`（プロキシ）と `skills-123-suggest`（スカウト）が有効に。
+Claude Code を再起動。`skills-123` が有効に。
 
 | Agent | ガイド | |
 |-------|------|:---:|

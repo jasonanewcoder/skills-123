@@ -25,9 +25,6 @@ cp /tmp/skills-123/skills/skills-123/SKILL.md ~/.agents/skills/skills-123/SKILL.
 cp -r /tmp/skills-123/skills/skills-123/scripts ~/.agents/skills/skills-123/scripts
 cp -r /tmp/skills-123/skills/skills-123/references ~/.agents/skills/skills-123/references
 
-# Copy the suggest companion
-mkdir -p ~/.agents/skills/skills-123-suggest
-cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md ~/.agents/skills/skills-123-suggest/SKILL.md
 
 # Clean up
 rm -rf /tmp/skills-123
@@ -39,7 +36,6 @@ rm -rf /tmp/skills-123
 git clone https://github.com/jasonanewcoder/skills-123.git ~/workspace/skills-123
 mkdir -p ~/.agents/skills
 ln -s ~/workspace/skills-123/skills/skills-123 ~/.agents/skills/skills-123
-ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.agents/skills/skills-123-suggest
 ```
 
 ## Usage
@@ -61,7 +57,6 @@ Codex will detect the skill's description and trigger it automatically when your
 | `description`-based auto-trigger | ✅ Supported |
 | Shell scripts (`scripts/`) | ⚠️ Limited — Codex sandboxes script execution |
 | References (`references/`) | ✅ Loaded on demand |
-| `skills-123-suggest` passive mode | ✅ Works |
 | `WebSearch` tool | ✅ Available |
 
 **Key caveats:**

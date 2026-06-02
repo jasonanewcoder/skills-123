@@ -40,7 +40,6 @@ If the import option isn't available:
    technologies, frameworks, or workflows.
    ```
 4. Paste the body of `skills/skills-123/SKILL.md` into the instruction field
-5. Repeat for `skills-123-suggest`
 
 ### Method 3: Via Skills Marketplace
 
@@ -79,14 +78,12 @@ Coze 3.0 offers features not available in the local Claude Code version:
 | SKILL.md (YAML frontmatter) | ✅ Auto-parsed on import |
 | Shell scripts (`scripts/`) | ✅ Runs in Coze sandbox |
 | References (`references/`) | ✅ Loaded on demand |
-| skills-123-suggest passive mode | ❌ Coze agents don't have background hooks |
 | `WebSearch` tool | ✅ Via Coze's built-in search plugin |
 | `WebFetch` tool | ✅ Via Coze's HTTP plugin |
 | Local file system access | ❌ Coze is cloud-based |
 
 **Key caveats:**
 - **No local filesystem** — installed skills go to Coze's cloud workspace, not your local `.claude/skills/`. Skills discovered by skills-123 on Coze cannot install to your local machine.
-- **No passive suggestion** — Coze doesn't support the SessionStart/UserPromptSubmit hook model that `skills-123-suggest` relies on. Only active search works.
 - **Import size limits** — Coze may have limits on zip file size. The core skill files are small, but keep scripts minimal.
 - **Chinese interface** — Coze's primary UI is Chinese. English users may prefer the Claude Code native experience.
 

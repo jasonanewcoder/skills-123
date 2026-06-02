@@ -80,7 +80,7 @@ git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```
 
-Claude Code 재시작. `skills-123`(프록시)과 `skills-123-suggest`(스카우트) 활성화.
+Claude Code 재시작. `skills-123` 활성화.
 
 | Agent | 가이드 | |
 |-------|------|:---:|

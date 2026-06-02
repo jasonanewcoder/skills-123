@@ -33,19 +33,15 @@ alwaysApply: false
 
 Then append the full content of `skills/skills-123/SKILL.md` (without its YAML frontmatter).
 
-### Step 3: Convert skills-123-suggest to .mdc format
 
-Create `.cursor/rules/skills-123-suggest.mdc`:
 
 ```yaml
 ---
-description: Passive skill suggestion — notices when community skills might help and suggests running skills-123.
 globs:
 alwaysApply: false
 ---
 ```
 
-Then append the content of `skills/skills-123-suggest/SKILL.md` (without its YAML frontmatter).
 
 ### Automated conversion script
 
@@ -68,16 +64,12 @@ HEADER
 
 tail -n +6 "$SKILLS_REPO/skills/skills-123/SKILL.md" >> "$CURSOR_RULES/skills-123-core.mdc"
 
-# Convert suggest skill
-cat > "$CURSOR_RULES/skills-123-suggest.mdc" << 'HEADER'
 ---
-description: Skill Suggest — passive skill suggestion engine. Notices opportunities to recommend community skills.
 globs:
 alwaysApply: false
 ---
 HEADER
 
-tail -n +6 "$SKILLS_REPO/skills/skills-123-suggest/SKILL.md" >> "$CURSOR_RULES/skills-123-suggest.mdc"
 
 echo "✅ Converted skills-123 to Cursor Rules format"
 ```
@@ -102,7 +94,6 @@ Or use the Agent mode (`Cmd+I` / `Ctrl+I`) and mention the rule:
 | Auto-trigger from description | ⚠️ Manual (`@rule-name`) |
 | 5-phase search pipeline | ✅ Works (WebSearch via Cursor) |
 | Shell scripts | ⚠️ Needs execution approval |
-| skills-123-suggest passive mode | ❌ Not supported (no auto-trigger) |
 | Security scanning | ✅ Works if scripts are allowed |
 
 **Key caveats:**

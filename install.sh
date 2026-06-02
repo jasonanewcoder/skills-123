@@ -68,7 +68,6 @@ fi
 mkdir -p "${SKILLS_DIR}/skills-123/scripts"
 mkdir -p "${SKILLS_DIR}/skills-123/references"
 mkdir -p "${SKILLS_DIR}/skills-123/cache"
-mkdir -p "${SKILLS_DIR}/skills-123-suggest"
 
 SRC="${SOURCE_DIR}/skills"
 
@@ -96,14 +95,6 @@ if [ -d "${SRC}/skills-123/references" ]; then
     echo "✓ Installed skills-123/references/"
 fi
 
-# Copy suggest skill
-if [ -f "${SRC}/skills-123-suggest/SKILL.md" ]; then
-    cp "${SRC}/skills-123-suggest/SKILL.md" "${SKILLS_DIR}/skills-123-suggest/SKILL.md"
-    echo "✓ Installed skills-123-suggest/SKILL.md"
-else
-    echo "✗ ERROR: skills/skills-123-suggest/SKILL.md not found"
-    exit 1
-fi
 
 echo ""
 echo "============================================"
@@ -111,7 +102,6 @@ echo " Installation complete!"
 echo ""
 echo " Skills installed to:"
 echo "   ${SKILLS_DIR}/skills-123/"
-echo "   ${SKILLS_DIR}/skills-123-suggest/"
 echo ""
 echo " Restart Claude Code to activate."
 echo "============================================"
