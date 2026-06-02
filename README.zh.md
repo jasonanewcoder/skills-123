@@ -82,8 +82,15 @@ skills-123 是一个 **元技能**（meta-skill）——用技能来使用技能
 ## 🚀 快速开始
 
 ```bash
-# 安装
+# 安装（npx — 推荐）
+npx skills add jasonanewcoder/skills-123
+
+# 或通过 curl
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
+
+# 或通过 git clone
+git clone https://github.com/jasonanewcoder/skills-123.git
+cd skills-123 && bash install.sh
 
 # 重启 Claude Code，然后直接说：
 "帮我写一个dashboard网页"

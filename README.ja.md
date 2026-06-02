@@ -74,8 +74,13 @@ skills-123 は **メタスキル**——スキルを使うためのスキルで�
 ## 🚀 インストール
 
 ```bash
+# インストール（npx — 推奨）
+npx skills add jasonanewcoder/skills-123
+
+# または curl
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
-# または
+
+# または git clone
 git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```

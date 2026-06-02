@@ -74,8 +74,13 @@ Un dashboard profesional y distintivo — no IA genérica.
 ## 🚀 Instalación
 
 ```bash
+# Instalación（npx — recomendado）
+npx skills add jasonanewcoder/skills-123
+
+# O vía curl
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
-# O manual
+
+# O manual (git clone)
 git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```

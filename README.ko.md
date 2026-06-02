@@ -74,8 +74,13 @@ skills-123은 **메타 스킬**——스킬을 사용하는 스킬입니다.
 ## 🚀 설치
 
 ```bash
+# 설치（npx — 권장）
+npx skills add jasonanewcoder/skills-123
+
+# 또는 curl
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
-# 또는
+
+# 또는 git clone
 git clone https://github.com/jasonanewcoder/skills-123.git
 cd skills-123 && bash install.sh
 ```

@@ -86,8 +86,15 @@ You get a distinctive, enterprise-grade dashboard.
 ## 🚀 Quick Start
 
 ```bash
-# Install
+# Install (npx — recommended)
+npx skills add jasonanewcoder/skills-123
+
+# Or via curl
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
+
+# Or via git clone
+git clone https://github.com/jasonanewcoder/skills-123.git
+cd skills-123 && bash install.sh
 
 # Restart Claude Code, then just ask:
 "帮我写一个dashboard网页"
