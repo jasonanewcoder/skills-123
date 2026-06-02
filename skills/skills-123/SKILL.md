@@ -1,6 +1,6 @@
 ---
 name: skills-123
-description: Skill Oracle — discover, evaluate, and use community Claude Code skills from GitHub to improve the quality of any task. Invoke this skill whenever the user asks to accomplish something concrete — building, creating, writing, setting up, deploying, designing, making anything with a deliverable. Works with ALL languages based on semantic intent (not trigger words): if the user wants something BUILT or CREATED or SOLVED, invoke this skill. This includes Chinese (帮我做X、写一个X、做一个X、搭建X、部署X), English (build me X, create X, write X, set up X, make X), Japanese (Xを作って、Xを構築して、Xを設定して), Korean (X 만들어 줘, X 구축해 줘, X 작성해 줘), Spanish (construye X, crea X, haz X, configura X), and any other language. The key signal is TASK INTENT — the user wants a deliverable, not just information. Proxy mode (default): search GitHub → fetch skill content → inject into context → complete task with improved quality. Install mode: full evaluation + user selection + security scan + git clone for persistent use.
+description: "Skill Oracle — discover, evaluate, and use community Claude Code skills from GitHub to improve the quality of any task. Invoke this skill whenever the user asks to accomplish something concrete — building, creating, writing, setting up, deploying, designing, making anything with a deliverable. Works with ALL languages based on semantic intent (not trigger words): if the user wants something BUILT or CREATED or SOLVED, invoke this skill. This includes Chinese (帮我做X、写一个X、做一个X、搭建X、部署X), English (build me X, create X, write X, set up X, make X), Japanese (Xを作って、Xを構築して、Xを設定して), Korean (X 만들어 줘, X 구축해 줘, X 작성해 줘), Spanish (construye X, crea X, haz X, configura X), and any other language. The key signal is TASK INTENT — the user wants a deliverable, not just information. Proxy mode (default): search GitHub → fetch skill content → inject into context → complete task with improved quality. Install mode: full evaluation + user selection + security scan + git clone for persistent use."
 tools: Bash, WebSearch, WebFetch, Read, Write, Edit
 ---
 
@@ -75,13 +75,15 @@ Also check: `https://github.com/travisvn/awesome-claude-skills` for matching ent
 # GitHub repo search (no auth needed):
 bash ~/.claude/skills/skills-123/scripts/fetch-local.sh search "<domain keywords>"
 
-# DuckDuckGo web search:
+# DuckDuckGo web search (automatically falls back to Bing if DDG blocked):
 bash ~/.claude/skills/skills-123/scripts/fetch-local.sh ddg "<domain keywords> Claude Code skill"
 
 # Awesome-lists:
 bash ~/.claude/skills/skills-123/scripts/fetch-local.sh awesome
 ```
 This bypasses claude.ai's proxy entirely and uses your machine's network. Requires `curl` and `python3`.
+
+> **China / restricted networks:** The script respects `CHINA_MODE=1` env var which enables GitHub mirror chains (ghproxy.com etc.) for raw.githubusercontent.com and api.github.com, and switches search to Bing. Also respects `https_proxy` / `all_proxy` for custom proxies. See `references/china-network.md` for detailed setup.
 
 Collect up to 10 candidate repo URLs. **If 0 → exit silently, handle directly.**
 
@@ -207,5 +209,36 @@ These patterns apply to both Proxy (quality gate) and Install (auto-reject):
 - `search-cache.json` — query→results mapping, 24-hour TTL
 
 **Edge cases:** Fetch fails → fallback. Skill too large → extract overview + patterns only. Multiple good skills → merge top 2-3 (prefer complementary). Already installed → mention and ask if user wants alternatives.
+
+### 🌐 China / Restricted Networks
+
+If you're in mainland China or behind a restrictive firewall, set these env vars before invoking skills-123:
+
+```bash
+export CHINA_MODE=1                          # enables mirror chain + Bing search
+export GITHUB_TOKEN="ghp_xxx"                # optional: higher API rate limits
+export https_proxy="http://127.0.0.1:7890"   # optional: local proxy (Clash/V2Ray)
+```
+
+**What CHINA_MODE=1 does:**
+- `raw.githubusercontent.com` → tries `raw.ghproxy.com` → `raw.mghproxy.com` → `ghproxy.com` prefix proxy
+- `api.github.com` → tries `gh.api.99988866.xyz` → `ghproxy.com` prefix proxy
+- Search: prefers Bing (`cn.bing.com`) over DuckDuckGo (blocked in China)
+- `git clone` / tarball download: prepends `https://ghproxy.com/` when direct fails
+
+**Custom mirrors:** You can override individual mirror targets:
+```bash
+export SKILLS_MIRROR_RAW="raw.ghproxy.com"     # raw.githubusercontent.com replacement
+export SKILLS_MIRROR_API="gh.api.99988866.xyz" # api.github.com replacement
+export SKILLS_MIRROR_GIT="https://ghproxy.com/" # git clone prefix
+export SKILLS_SEARCH_BING=1                     # use Bing instead of DDG
+```
+
+**Verify connectivity:**
+```bash
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh check
+```
+
+> See `references/china-network.md` for detailed setup guide, recommended mirrors, and troubleshooting.
 
 > Detailed procedures live in `references/` and `scripts/`. This SKILL.md is self-contained for core operation — the bundled files are accelerators, not requirements.

@@ -104,6 +104,8 @@ cd skills-123 && bash install.sh
 
 skills-123 activates automatically when it detects you want to build something. No trigger words. No configuration.
 
+> 🇨🇳 **中国大陆用户**: 由于 GitHub 访问受限，建议设置 `export CHINA_MODE=1` 启用镜像加速。详见 [china-network.md](skills/skills-123/references/china-network.md)。
+
 ### Other agents
 
 | Agent | Guide | |

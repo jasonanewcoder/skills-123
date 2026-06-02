@@ -100,6 +100,34 @@ cd skills-123 && bash install.sh
 
 skills-123 自动检测任务意图。不用触发词，不用配置。
 
+### 🇨🇳 中国大陆用户必读
+
+由于 GitHub 在国内访问受限（`raw.githubusercontent.com` 被墙、`github.com` 限速），**强烈建议配置网络环境**，否则几乎所有搜索和获取都会失败：
+
+```bash
+# 最简单的方式：在 ~/.bashrc 或 ~/.zshrc 中添加
+export CHINA_MODE=1
+
+# 如果你有本地代理（Clash/V2Ray/Shadowsocks）
+export https_proxy="http://127.0.0.1:7890"
+
+# 推荐：设置 GitHub Token 获得更高 API 限额（5000次/小时 vs 60次/小时）
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxx"
+```
+
+**CHINA_MODE=1 做了什么？**
+- `raw.githubusercontent.com` → 自动尝试 `raw.ghproxy.com` 等国内可访问的镜像站
+- `api.github.com` → 自动尝试 API 镜像站
+- DuckDuckGo 搜索 → 自动切换到必应（Bing，国内可访问）
+- `git clone` → 通过镜像加速下载
+
+配置后重启终端，然后验证连通性：
+```bash
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh check
+```
+
+详细说明见 [china-network.md](skills/skills-123/references/china-network.md)。
+
 ### 其他 Agent
 
 | Agent | 指南 | 支持 |

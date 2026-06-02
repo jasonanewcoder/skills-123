@@ -15,6 +15,29 @@ REPO_URL="${1:-}"
 SKILL_SUBPATH="${2:-.}"
 SKILLS_DIR="${HOME}/.claude/skills"
 
+# ── Mirror config for China / slow networks ──────────────────────────────────
+# Set CHINA_MODE=1 or SKILLS_MIRROR_GIT to enable mirror acceleration.
+# SKILLS_MIRROR_GIT: prefix prepended to github.com URLs for clone/download.
+#   e.g. "https://ghproxy.com/"  →  https://ghproxy.com/https://github.com/...
+CHINA_MODE="${CHINA_MODE:-0}"
+SKILLS_MIRROR_GIT="${SKILLS_MIRROR_GIT:-}"
+GIT_MIRROR=""
+if [ -n "$SKILLS_MIRROR_GIT" ]; then
+    GIT_MIRROR="$SKILLS_MIRROR_GIT"
+elif [ "$CHINA_MODE" = "1" ]; then
+    GIT_MIRROR="https://ghproxy.com/"
+fi
+
+# Build mirrored URL if mirror configured
+mirror_url() {
+    local url="$1"
+    if [ -n "$GIT_MIRROR" ]; then
+        echo "${GIT_MIRROR}${url}"
+    else
+        echo "$url"
+    fi
+}
+
 if [ -z "$REPO_URL" ]; then
     echo '{"error": "usage: install-from-github.sh <repo-url> [skill-subpath]"}'
     exit 1
@@ -36,38 +59,76 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 echo "{\"status\":\"installing\",\"repo\":\"${OWNER_REPO}\",\"subpath\":\"${SKILL_SUBPATH}\"}"
 
-# Method 1: Try git clone (preferred)
-if command -v git &>/dev/null; then
-    echo '{"status":"cloning","method":"git"}'
-    if git clone --depth 1 --filter=blob:none "https://github.com/${OWNER_REPO}.git" "$TMPDIR" 2>/dev/null; then
-        echo '{"status":"cloned","method":"git"}'
-    else
+# Determine download method and execute
+download_repo() {
+    local dest="$1"
+    local owner_repo="$2"
+
+    # Method 1: git clone (preferred, --depth 1 is fast)
+    if command -v git &>/dev/null; then
+        echo '{"status":"cloning","method":"git"}'
+
+        # Try direct git clone first
+        if GIT_TERMINAL_PROMPT=0 git clone --depth 1 --filter=blob:none \
+            "https://github.com/${owner_repo}.git" "$dest" 2>/dev/null; then
+            echo '{"status":"cloned","method":"git","via":"direct"}'
+            return 0
+        fi
+
+        # Direct failed — try mirrored clone if configured
+        if [ -n "$GIT_MIRROR" ]; then
+            local mirrored_git_url
+            mirrored_git_url="$(mirror_url "https://github.com/${owner_repo}.git")"
+            echo "{\"status\":\"cloning_mirror\",\"method\":\"git\",\"url\":\"${mirrored_git_url}\"}"
+            if GIT_TERMINAL_PROMPT=0 git clone --depth 1 --filter=blob:none \
+                "$mirrored_git_url" "$dest" 2>/dev/null; then
+                echo '{"status":"cloned","method":"git","via":"mirror"}'
+                return 0
+            fi
+        fi
+
+        # Git clone failed — fall through to tarball
         echo '{"status":"git_failed","trying":"tarball"}'
-        # Method 2: Fall back to tarball
-        TARBALL_URL="https://api.github.com/repos/${OWNER_REPO}/tarball"
-        curl -sL "$TARBALL_URL" -o "$TMPDIR/repo.tar.gz"
-        mkdir -p "$TMPDIR/repo"
-        tar xzf "$TMPDIR/repo.tar.gz" -C "$TMPDIR/repo" --strip-components=1 2>/dev/null || true
-        # Move contents to TMPDIR root for consistent access
-        if [ -d "$TMPDIR/repo" ]; then
-            rm -rf "$TMPDIR"/*
-            mv "$TMPDIR/repo"/* "$TMPDIR/" 2>/dev/null || true
-            rmdir "$TMPDIR/repo" 2>/dev/null || true
+    fi
+
+    # Method 2: Tarball download (works without git)
+    echo '{"status":"downloading","method":"tarball"}'
+
+    local tarball_url="https://api.github.com/repos/${owner_repo}/tarball"
+    local tarball_file="$dest/repo.tar.gz"
+
+    # Try direct tarball first, then mirrored
+    if ! curl -sSL --max-time 120 --retry 2 \
+        -H "User-Agent: skills-123-installer/1.0" \
+        -o "$tarball_file" "$tarball_url" 2>/dev/null; then
+        if [ -n "$GIT_MIRROR" ]; then
+            local mirrored_tarball
+            mirrored_tarball="$(mirror_url "$tarball_url")"
+            curl -sSL --max-time 120 --retry 2 \
+                -H "User-Agent: skills-123-installer/1.0" \
+                -o "$tarball_file" "$mirrored_tarball" 2>/dev/null || true
         fi
     fi
-else
-    # Method 2: Use tarball directly (no git)
-    echo '{"status":"downloading","method":"tarball"}'
-    TARBALL_URL="https://api.github.com/repos/${OWNER_REPO}/tarball"
-    curl -sL "$TARBALL_URL" -o "$TMPDIR/repo.tar.gz"
-    mkdir -p "$TMPDIR/extracted"
-    tar xzf "$TMPDIR/repo.tar.gz" -C "$TMPDIR/extracted" --strip-components=1 2>/dev/null || true
-    rm -rf "$TMPDIR"/*
-    if [ -d "$TMPDIR/extracted" ]; then
-        mv "$TMPDIR/extracted"/* "$TMPDIR/" 2>/dev/null || true
-        rmdir "$TMPDIR/extracted" 2>/dev/null || true
+
+    if [ -f "$tarball_file" ] && [ -s "$tarball_file" ]; then
+        mkdir -p "$dest/extracted"
+        tar xzf "$tarball_file" -C "$dest/extracted" --strip-components=1 2>/dev/null || true
+        rm -rf "$dest"/*
+        if [ -d "$dest/extracted" ]; then
+            mv "$dest/extracted"/* "$dest/" 2>/dev/null || true
+            rmdir "$dest/extracted" 2>/dev/null || true
+        fi
+        rm -f "$tarball_file"
+        return 0
     fi
-fi
+
+    return 1
+}
+
+download_repo "$TMPDIR" "$OWNER_REPO" || {
+    echo '{"error":"failed to download repository"}'
+    exit 1
+}
 
 # Find SKILL.md
 SKILL_MD_PATH=""
