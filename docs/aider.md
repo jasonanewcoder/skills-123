@@ -2,116 +2,124 @@
 
 ## Overview
 
-[Aider](https://github.com/Aider-AI/aider) is an AI pair programming tool for the terminal. It doesn't natively support SKILL.md files, but it reads convention files and can use them as persistent instructions. skills-123 needs to be adapted into Aider's convention format.
+[Aider](https://aider.chat) is a terminal-based AI pair programming tool. Aider uses `CONVENTIONS.md` files and a `.aider/` directory for project-level instructions. It doesn't natively support SKILL.md, so skills-123 must be adapted into Aider's conventions format.
 
 ## Prerequisites
 
-- [Aider](https://github.com/Aider-AI/aider) installed (`pip install aider-chat` or `brew install aider`)
-- An AI provider API key configured
+- [Aider](https://aider.chat/docs/install.html) installed (`pip install aider-chat` or `brew install aider`)
+- An LLM API key (Anthropic, OpenAI, etc.)
 
 ## Installation
 
-Aider reads from `CONVENTIONS.md` or files specified with `--read`. There's no directory-based skill structure.
+Aider reads `.aider.conf.yml` (global) and `CONVENTIONS.md` (project-level) for instructions. Skills-123 needs to be converted to Aider's format.
 
-### Method 1: Conventions file (recommended)
-
-Create `~/.aider/skills-123.md`:
+### Step 1: Add to project CONVENTIONS.md
 
 ```bash
-mkdir -p ~/.aider
-```
+cat >> CONVENTIONS.md << 'EOF'
 
-Then copy the adapted skill content (see below) into `~/.aider/skills-123.md`.
+## Skills-123: Skill Discovery System
 
-### Method 2: Launch Aider with the skill loaded
+When the user asks complex or domain-specific questions about technologies,
+frameworks, or tools, use the following skill discovery process:
 
-```bash
-aider --read ~/workspace/skills-123/skills/skills-123/SKILL.md
-```
+### Search Phase
+Extract 2-4 keywords from the user's question.
+Search GitHub for relevant Claude Code skills:
+- Use web search: "site:github.com claude-code-skill <keywords>"
+- Use web search: "SKILL.md <keywords> site:github.com"
+- Check: https://github.com/travisvn/awesome-claude-skills
 
-### Adapted content for `~/.aider/skills-123.md`
+### Evaluation Phase
+For each candidate, score on 5 dimensions (0-100):
+1. Community (0-15): log10(stars+1) * 5
+2. Recency (0-10): ≤3mo=10, ≤6mo=7, ≤1y=4, older=1
+3. Author Trust (0-15): verified org +5, known publisher +5, contributors
+4. Relevance (0-30): keyword match ratio * 30
+5. Security (0-20): scan for dangerous patterns (curl|sh, eval, base64 pipes, reverse shells)
 
-```markdown
-# Skills-123: Skill Discovery System
+### Presentation
+Show top 3-5 results with scores as a table. Always recommend #1.
 
-## Capability
-You have the ability to discover and install community AI agent skills from GitHub.
-When the user asks complex or domain-specific questions, you can search for relevant
-skills, evaluate their quality, and recommend the best match.
+### Installation
+If user wants to install, clone to ~/.aider/skills/<name>/ or suggest creating a CONVENTIONS.md entry.
 
-## When to Use
-- User asks a complex question about a specific technology, framework, or tool
-- User says "find me a skill for...", "search skills...", "any good skills for..."
-- User describes a workflow that might have pre-built skill solutions
+### Safety Rules
+- NEVER tell the user to pipe curl to bash
+- Always ask for confirmation before installing
+- Auto-reject skills with critical security patterns
 
-## Search Process
-1. Search GitHub for relevant skills:
-   - "site:github.com claude-code-skill <keywords>"
-   - "SKILL.md <keywords> site:github.com"
-2. Check community registries and awesome lists
-3. Deduplicate and enrich results with metadata
+### Trusted Organizations
+anthropics, vercel-labs, microsoft, cloudflare, hashicorp, tailwindlabs, supabase
 
-## Quality Evaluation (5 dimensions, 0-100)
-- Community Signal (0-15): log10(stars+1) × 5
-- Recency (0-10): ≤3mo=10, ≤6mo=7, ≤1y=4, older=1
-- Author Trust (0-15): verified orgs, known publishers, contributor count
-- Relevance (0-30): keyword match ratio × 30
-- Security (0-20): clean=20, warnings=10, critical=disqualified
-
-## Safety Rules
-- NEVER recommend a skill without review
-- Auto-reject: `curl | sh`, `eval $`, base64-to-pipe, `rm -rf /`, `/dev/tcp/`
-- Flag: network requests, sudo, global package installs
-
-## Trusted Orgs
-anthropics, vercel-labs, microsoft, cloudflare, hashicorp, tailwindlabs,
-supabase, railwayapp, netlify
-
-## Known Publishers
+### Known Publishers
 daymade, obra, majiayu000, travisvn, julianobarbosa, ariadoss, mattpocock
+EOF
+```
+
+### Step 2: Add to global Aider config (optional)
+
+```bash
+# Add skill discovery instructions to your global conventions
+echo "
+## Available Skill: skills-123
+When asked about unfamiliar technologies, search for relevant Claude Code skills on GitHub using web search.
+" >> ~/.aider/conventions.md
+```
+
+### Step 3: Using with --read flag
+
+You can also create a dedicated skill file and load it with Aider's `--read` flag:
+
+```bash
+# Create a dedicated skills-123 conventions file
+cp skills/skills-123/SKILL.md ~/.aider/skills-123-conventions.md
+
+# Launch Aider with skills-123 loaded
+aider --read ~/.aider/skills-123-conventions.md
 ```
 
 ## Usage
 
-Launch Aider with the skill file:
-
-```bash
-aider --read ~/.aider/skills-123.md
-```
-
-Then in the Aider chat:
+In an Aider session:
 
 ```
-"Find me skills for Kubernetes deployment"
-"Search for Python testing skills on GitHub"
+/find me skills for Kubernetes deployment
+/search for PostgreSQL backup skills on GitHub
+/are there any good skills for CI/CD pipelines?
 ```
 
-Or add it to your `.aider.conf.yml` for automatic loading:
+Or just describe your need naturally — Aider will reference the CONVENTIONS.md instructions:
 
-```yaml
-# .aider.conf.yml
-read:
-  - ~/.aider/skills-123.md
+```
+"I need to set up a GraphQL server with Apollo and Prisma. Are there any community skills that could help?"
 ```
 
 ## Limitations
 
 | Feature | Support |
 |---------|:---:|
-| SKILL.md (YAML frontmatter) | ❌ — plain markdown only |
-| Directory-based structure | ❌ — flat file only |
-| Auto-trigger | ❌ — must be loaded with `--read` |
-| Shell scripts | ⚠️ — Aider has `/run` command for shell |
-| skills-123-suggest passive mode | ❌ — no hook/background system |
-| WebSearch tool | ⚠️ — Aider doesn't have built-in web search |
-| Caching | ❌ — no persistent cache between sessions |
+| SKILL.md (YAML frontmatter) | ❌ — CONVENTIONS.md only |
+| Directory-based skill structure | ❌ — flat conventions file |
+| Auto-trigger from description | ⚠️ — only if CONVENTIONS.md is loaded |
+| Shell scripts (`scripts/`) | ❌ — inline instructions only |
+| skills-123-suggest passive mode | ❌ — no background hooks |
+| Web search | ⚠️ — via `/web` command |
 
 **Key caveats:**
-- **No built-in web search** — Aider cannot directly search the web. The skill discovery instructions will guide Aider's reasoning, but actual GitHub searches would need to be done outside Aider or via the `/web` command if available.
-- **Flat format** — Aider's `CONVENTIONS.md` is plain markdown. The rich directory structure of skills-123 (scripts, references) is reduced to a single text block.
-- **Manual loading** — You must explicitly load the skill file with `--read` or in your config. It won't auto-discover.
-- **Best used as a reference** — skills-123 in Aider serves more as a mental checklist for the model than a fully automated pipeline. For the full experience, use Claude Code.
+- Aider does **not** support the SKILL.md format natively. You must convert skills-123 into Aider's CONVENTIONS.md format.
+- No YAML frontmatter support — trigger conditions can't be expressed declaratively.
+- No automatic skill discovery — the user must explicitly ask or the CONVENTIONS.md must describe the capability.
+- Web search in Aider is available via `/web <query>` command, which is more limited than Claude Code's WebSearch tool.
+- Aider's `/read-only` mode may be needed for safe skill discovery (prevents accidental file modifications).
+- For best results, use Aider with a Claude model as the backend (`--model claude-sonnet-4-6`).
 
-## Alternative: Use Aider with Claude API
+## Alternative: Run Aider with Claude as backend
 
-If Aider is configured to use the Claude API as its backend, the skill instructions will be followed more reliably than with other models, since Claude has been specifically trained on the Agent Skills format.
+Aider works best with skills-123 when configured with a Claude model:
+
+```bash
+aider --model anthropic/claude-sonnet-4-6 --read ~/.aider/skills-123-conventions.md
+```
+
+This gives Aider access to Claude's web search and tool-use capabilities, which significantly improves skill discovery quality compared to open-source models.

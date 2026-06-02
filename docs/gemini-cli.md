@@ -2,16 +2,16 @@
 
 ## Overview
 
-[Gemini CLI](https://github.com/google-gemini/gemini-cli) is Google's open-source AI coding agent for the terminal. It supports the Agent Skills specification and can load SKILL.md files from `~/.gemini/skills/`.
+[Gemini CLI](https://github.com/google-gemini/gemini-cli) is Google's terminal-based AI agent. It supports SKILL.md files placed in `~/.gemini/skills/`, making skills-123 directly compatible.
 
 ## Prerequisites
 
-- [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed (`npm install -g @google/gemini-cli` or `brew install gemini-cli`)
-- A Google AI Studio API key configured
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli) installed (`npm install -g @google/gemini-cli`)
+- A Google AI Studio API key or Vertex AI configured
 
 ## Installation
 
-### Method 1: Direct copy
+### Direct copy
 
 ```bash
 git clone https://github.com/<user>/skills-123.git /tmp/skills-123
@@ -27,7 +27,7 @@ cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md ~/.gemini/skills/skills-12
 rm -rf /tmp/skills-123
 ```
 
-### Method 2: Symlink
+### Symlink
 
 ```bash
 git clone https://github.com/<user>/skills-123.git ~/workspace/skills-123
@@ -40,39 +40,21 @@ ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.gemini/skills/skills-1
 
 ```
 "Find me skills for Kubernetes deployment"
-"Search for database migration skills on GitHub"
+"Search for CI/CD pipeline skills"
 ```
-
-Gemini CLI detects skills in `~/.gemini/skills/` and includes them in its available capabilities.
 
 ## Limitations
 
 | Feature | Support |
 |---------|:---:|
-| SKILL.md (YAML frontmatter) | ✅ Supported |
-| Multi-file skill directory | ✅ Supported |
-| Shell scripts (`scripts/`) | ⚠️ Sandboxed |
-| `WebSearch` tool | ❌ Not directly — Gemini uses Google grounding instead |
-| `WebFetch` tool | ⚠️ Via Gemini's URL fetching capability |
-| skills-123-suggest passive mode | ❓ Unknown |
+| SKILL.md (YAML frontmatter) | ✅ Full |
+| Shell scripts | ⚠️ Restricted |
+| WebSearch | ⚠️ Google grounding, not general web |
+| Auto-trigger | ✅ Supported |
 
 **Key caveats:**
-- **No WebSearch tool** — Gemini CLI does not expose a generic WebSearch tool like Claude Code. Instead, Gemini uses **Google Search grounding** internally. The skill discovery search queries in skills-123 may need to be adapted: use Gemini's built-in grounding for web facts, and `curl` via Bash for fetching specific URLs.
-- **Shell sandboxing** — Gemini CLI sandboxes shell execution more strictly than Claude Code. Scripts in `scripts/` may need approval for each execution.
-- **No hook system** — Gemini CLI doesn't support the hooks that `skills-123-suggest` uses for passive suggestion. Only active search works.
-
-## Adaptation Notes
-
-For best results with Gemini CLI, modify the search phase to use Gemini grounding:
-
-Instead of:
-```
-WebSearch: "site:github.com claude-code-skill kubernetes"
-```
-
-Use:
-```
-Search Google for: claude-code-skill kubernetes site:github.com
-```
-
-Also adapt the `WebFetch` step — Gemini CLI can fetch URLs via curl in Bash or use its built-in content fetching if available.
+- Gemini CLI uses **Google Search grounding** instead of general WebSearch — search results may differ from Claude Code.
+- `WebFetch` may not be available; skill discovery relies primarily on Gemini's built-in knowledge and Google grounding.
+- Shell scripts (`scripts/`) are sandboxed. `install-from-github.sh` requires `--allow-exec` flag or manual approval.
+- The `skills-123-suggest` passive mode may not trigger as reliably due to different skill activation heuristics.
+- For the best search results, use Gemini 2.5 Pro or later (better web grounding).

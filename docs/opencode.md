@@ -2,16 +2,16 @@
 
 ## Overview
 
-[OpenCode](https://github.com/opencode-ai/opencode) is an open-source AI coding agent that supports the Agent Skills specification. Skills are stored at `~/.config/opencode/skills/<name>/SKILL.md`.
+[OpenCode](https://github.com/opencode-ai/opencode) is an open-source AI coding agent. It stores skills at `~/.config/opencode/skills/<name>/SKILL.md` (Linux/macOS) and supports the SKILL.md standard.
 
 ## Prerequisites
 
 - [OpenCode](https://github.com/opencode-ai/opencode) installed
-- An AI provider API key configured (Claude, OpenAI, etc.)
+- An LLM provider configured (Anthropic, OpenAI, or open-source)
 
 ## Installation
 
-### Method 1: Direct copy
+### Linux / macOS
 
 ```bash
 git clone https://github.com/<user>/skills-123.git /tmp/skills-123
@@ -27,7 +27,7 @@ cp /tmp/skills-123/skills/skills-123-suggest/SKILL.md ~/.config/opencode/skills/
 rm -rf /tmp/skills-123
 ```
 
-### Method 2: Symlink
+### Symlink
 
 ```bash
 git clone https://github.com/<user>/skills-123.git ~/workspace/skills-123
@@ -36,33 +36,24 @@ ln -s ~/workspace/skills-123/skills/skills-123 ~/.config/opencode/skills/skills-
 ln -s ~/workspace/skills-123/skills/skills-123-suggest ~/.config/opencode/skills/skills-123-suggest
 ```
 
-### OS-Specific Paths
-
-| OS | Skills location |
-|----|----------------|
-| macOS | `~/Library/Application Support/opencode/skills/` |
-| Linux | `~/.config/opencode/skills/` |
-| Windows | `%APPDATA%/opencode/skills/` |
-
 ## Usage
 
 ```
-"Find me skills for CI/CD pipeline setup"
-"Search for monitoring and observability skills"
+"Find me skills for Kubernetes deployment"
+"Search for React testing skills on GitHub"
 ```
 
 ## Limitations
 
 | Feature | Support |
 |---------|:---:|
-| SKILL.md (YAML frontmatter) | ✅ Supported |
-| Multi-file skill directory | ✅ Supported |
-| Shell scripts (`scripts/`) | ⚠️ Provider-dependent |
-| References (`references/`) | ✅ Loaded on demand |
-| skills-123-suggest passive mode | ❓ Unknown |
-| WebSearch tool | ⚠️ Provider-dependent |
+| SKILL.md (YAML frontmatter) | ✅ Full |
+| Shell scripts | ✅ Supported (with approval) |
+| WebSearch | ⚠️ Provider-dependent |
+| Auto-trigger | ✅ Supported |
 
 **Key caveats:**
-- OpenCode can use different AI providers. Tool availability (WebSearch, WebFetch) depends on which provider you use. Claude API as the backend gives the best skills-123 experience.
-- Skill auto-trigger reliability depends on the provider model's instruction-following capability.
-- The config path varies by OS — check `opencode --help` for your platform's exact path.
+- OpenCode is **LLM-agnostic** — WebSearch/WebFetch availability depends on your configured provider. Anthropic models have the best tool support.
+- Configuration path varies: `~/.config/opencode/skills/` (Linux/macOS) or `%APPDATA%/opencode/skills/` (Windows).
+- Skill auto-trigger quality depends heavily on the underlying model. Claude models trigger skills most reliably; open-source models may miss triggers.
+- OpenCode's open-source nature means you can modify skill loading behavior. See `~/.config/opencode/config.yaml` for skill path configuration.
