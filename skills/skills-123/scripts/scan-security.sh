@@ -66,13 +66,19 @@ WARNING_PATTERNS=(
     "netcat"
 )
 
-# Content integrity checks
-SUSPICIOUS_PATTERNS=(
-    "AAAA"           # Large base64 blocks often start with many A's from padding
-    "\\u200[b-f]"    # Zero-width characters (ZWSP, ZWNJ, ZWJ, etc.)
-    "\\u00ad"        # Soft hyphen
-    "\\u200e"        # LRM
-    "\\u200f"        # RLM
+# Content integrity checks — use python3 for proper Unicode detection
+# (BSD grep on macOS doesn't support \u escapes or PCRE)
+SUSPICIOUS_DESC=(
+    "zero-width space (U+200B)"
+    "zero-width non-joiner (U+200C)"
+    "zero-width joiner (U+200D)"
+    "left-to-right mark (U+200E)"
+    "right-to-left mark (U+200F)"
+    "soft hyphen (U+00AD)"
+    "word joiner (U+2060)"
+    "invisible separator (U+2062)"
+    "invisible plus (U+2064)"
+    "large base64 block (>500 consecutive base64 chars)"
 )
 
 critical_count=0
@@ -96,13 +102,42 @@ for pattern in "${WARNING_PATTERNS[@]}"; do
     fi
 done
 
-# Check for suspicious content
+# Check for suspicious Unicode characters and base64 blocks via python3
 suspicious_count=0
-for pattern in "${SUSPICIOUS_PATTERNS[@]}"; do
-    if echo "$CONTENT" | grep -qiE "$pattern" 2>/dev/null; then
-        ((suspicious_count++))
-    fi
-done
+suspicious_details_json="[]"
+if command -v python3 &>/dev/null; then
+    suspicious_result=$(echo "$CONTENT" | python3 -c "
+import sys, json, re
+text = sys.stdin.read()
+findings = []
+
+# Unicode zero-width and invisible characters
+zw_chars = {
+    '​': 'zero-width space (U+200B)',
+    '‌': 'zero-width non-joiner (U+200C)',
+    '‍': 'zero-width joiner (U+200D)',
+    '‎': 'left-to-right mark (U+200E)',
+    '‏': 'right-to-left mark (U+200F)',
+    '­': 'soft hyphen (U+00AD)',
+    '⁠': 'word joiner (U+2060)',
+    '⁢': 'invisible separator (U+2062)',
+    '⁤': 'invisible plus (U+2064)',
+}
+for char, desc in zw_chars.items():
+    if char in text:
+        count = text.count(char)
+        findings.append(f'{desc}: {count} occurrence(s)')
+
+# Large base64 blocks
+b64_blocks = re.findall(r'[A-Za-z0-9+/=]{500,}', text)
+if b64_blocks:
+    findings.append(f'large base64 block: {len(b64_blocks)} block(s) >= 500 chars')
+
+print(json.dumps({'count': len(findings), 'details': findings}, ensure_ascii=False))
+" 2>/dev/null)
+    suspicious_count=$(echo "$suspicious_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null || echo 0)
+    suspicious_details_json=$(echo "$suspicious_result" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('details',[])))" 2>/dev/null || echo "[]")
+fi
 
 # Check content size (excessively large files are suspicious)
 line_count=$(echo "$CONTENT" | wc -l | tr -d ' ')
@@ -118,20 +153,19 @@ if [ "$long_lines" -gt 0 ]; then
     warning_details+=("long_lines:${long_lines}_lines_over_2000_chars")
 fi
 
-# Build result
-SAFE=$([ "$critical_count" -eq 0 ] && echo "true" || echo "false")
-
-# Output JSON
+# Build result — pass all data to a single python3 invocation
 python3 -c "
-import json
+import sys, json
+
 result = {
     'critical': $critical_count,
     'warnings': $warning_count,
     'suspicious': $suspicious_count,
     'safe': $([ "$critical_count" -eq 0 ] && echo 'True' || echo 'False'),
-    'critical_patterns': $(python3 -c "import json; print(json.dumps($(printf '%s\n' "${critical_details[@]}" | python3 -c "import sys; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]')))" 2>/dev/null || echo '[]'),
-    'warning_patterns': $(python3 -c "import json; print(json.dumps($(printf '%s\n' "${warning_details[@]}" | python3 -c "import sys; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]')))" 2>/dev/null || echo '[]'),
-    'recommendation': '$([ "$critical_count" -eq 0 ] && [ "$warning_count" -eq 0 ] && echo '"clean"' || ([ "$critical_count" -gt 0 ] && echo '"reject"' || echo '"review"') )'
+    'critical_patterns': $(printf '%s\n' "${critical_details[@]:-}" | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
+    'warning_patterns': $(printf '%s\n' "${warning_details[@]:-}" | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
+    'suspicious_details': ${suspicious_details_json:-[]},
+    'recommendation': '$([ "$critical_count" -eq 0 ] && [ "$warning_count" -eq 0 ] && [ "$suspicious_count" -eq 0 ] && echo 'clean' || ([ "$critical_count" -gt 0 ] && echo 'reject' || echo 'review') )'
 }
 print(json.dumps(result, indent=2))
 " 2>/dev/null || echo '{"critical":0,"warnings":0,"safe":true,"recommendation":"error"}'

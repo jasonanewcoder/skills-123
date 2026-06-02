@@ -27,8 +27,8 @@ If #1 is NO and #2 is YES → invoke skills-123 before writing. This applies to 
 
 ### Project structure
 
-- `skills/skills-123/SKILL.md` — Core skill (~150 lines, self-contained)
-- `skills/skills-123/references/` — Scoring rubric, safety patterns, injection guide (loaded on-demand)
-- `skills/skills-123/scripts/` — Shell utilities for search, evaluate, install
+- `skills/skills-123/SKILL.md` — Core skill (~210 lines, self-contained)
+- `skills/skills-123/references/` — Scoring rubric, safety patterns, injection guide, hook config (loaded on-demand)
+- `skills/skills-123/scripts/` — Shell utilities: search-github (WebSearch adapter), fetch-local (local curl fallback), evaluate-skill, scan-security, install-from-github
 - `example/` — Before/after comparisons in 5 languages
 - `install.sh` — One-command installer

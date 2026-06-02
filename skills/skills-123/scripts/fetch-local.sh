@@ -190,11 +190,13 @@ fetch_skill() {
         ".claude/skills/${skill_name}/SKILL.md" \
         "SKILL.md"; do
 
-        # Try API first (can find files at any path)
+        # Try raw first (faster, no rate limit)
+        result=$(fetch_raw "$owner_repo" "HEAD" "$subpath") && { echo "$result"; return 0; }
+        # Then API (can find files at any path)
         result=$(fetch_api "$owner_repo" "$subpath") && { echo "$result"; return 0; }
     done
 
-    # Tier 3: Try api.github.com for root SKILL.md (different encoding path)
+    # Tier 3: Try api.github.com for root SKILL.md
     result=$(fetch_api "$owner_repo" "SKILL.md") && { echo "$result"; return 0; }
 
     # Tier 4: Try to list repo contents to find SKILL.md location

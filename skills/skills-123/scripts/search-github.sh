@@ -7,8 +7,8 @@
 #
 # NOTE: This script generates search query suggestions for WebSearch.
 # When WebSearch is unreachable, use the local fallback instead:
-#   bash skills/skills-123/scripts/fetch-local.sh search "<keywords>"
-#   bash skills/skills-123/scripts/fetch-local.sh ddg "<keywords>"
+#   bash ~/.claude/skills/skills-123/scripts/fetch-local.sh search "<keywords>"
+#   bash ~/.claude/skills/skills-123/scripts/fetch-local.sh ddg "<keywords>"
 #===============================================================================
 
 set -euo pipefail

@@ -40,9 +40,12 @@ User prompt →
 When the user asks to verify skills-123 is working ("--check", "verify skills-123 works", "test the skill"):
 
 1. Run a test search: `"dashboard" "Claude Code" skill GitHub`
-2. Report: number of results found, whether WebFetch is reachable (test one raw.githubusercontent.com URL), cache files present, skip-list entries
-3. If all checks pass: "✅ skills-123 is operational. [N] skills in cache, WebFetch reachable."
-4. If issues found: "⚠️ skills-123 found [issue]. [Suggestion for fix]."
+2. Test WebFetch: fetch one `raw.githubusercontent.com` URL
+3. Test local connectivity: `bash ~/.claude/skills/skills-123/scripts/fetch-local.sh check`
+4. Report: number of results found, WebFetch status, local-curl status, cache files present, skip-list entries
+5. If all checks pass: "✅ skills-123 is operational. [N] skills in cache. WebFetch: OK. Local curl: [all_ok|degraded]."
+6. If WebFetch fails but local curl OK: "⚠️ WebFetch unreachable (claude.ai proxy issue). Local curl is available — I'll use it as fallback."
+7. If both fail: "❌ skills-123 offline. Both WebFetch and local curl are unreachable. Check your network."
 
 ---
 
@@ -70,13 +73,13 @@ Also check: `https://github.com/travisvn/awesome-claude-skills` for matching ent
 **⚠️ Local fallback — if WebSearch fails or returns nothing:**
 ```
 # GitHub repo search (no auth needed):
-bash skills/skills-123/scripts/fetch-local.sh search "<domain keywords>"
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh search "<domain keywords>"
 
 # DuckDuckGo web search:
-bash skills/skills-123/scripts/fetch-local.sh ddg "<domain keywords> Claude Code skill"
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh ddg "<domain keywords> Claude Code skill"
 
 # Awesome-lists:
-bash skills/skills-123/scripts/fetch-local.sh awesome
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh awesome
 ```
 This bypasses claude.ai's proxy entirely and uses your machine's network. Requires `curl` and `python3`.
 
@@ -101,7 +104,7 @@ Try Tier 1 → 2 → 3 in order. If any succeeds, skip straight to quality gate.
 **If ALL WebFetch tiers fail for a candidate, do NOT skip it. Immediately retry with local curl:**
 
 ```
-bash skills/skills-123/scripts/fetch-local.sh skill <owner/repo>
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh skill <owner/repo>
 ```
 
 This single command tries raw→api→recursive-tree via your machine's local network. If it returns `"ok":true`, use the content exactly as if WebFetch had succeeded — feed it through the same quality gate (Step 4), same injection template (Step 5).
