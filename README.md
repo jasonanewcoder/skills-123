@@ -1,5 +1,7 @@
 # skills-123
 
+<h3 align="center"><em>The Skill Proxy — Discover, Inject, Improve. No Install Needed.</em></h3>
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20Coze%20%7C%20Windsurf%20%7C%20Gemini%20%7C%20OpenCode%20%7C%20Aider-purple" alt="Platforms">
@@ -10,223 +12,221 @@
 <p align="center">
   <strong>一生二，二生三，三生万物</strong><br>
   <em>One produces two, two produces three, three produces all things.</em><br>
-  — Tao Te Ching
+  — Tao Te Ching, Chapter 42
 </p>
 
 <p align="center">
-  <strong>The in-conversation skill advisor for AI coding agents.</strong><br>
-  Automatically discovers, evaluates, and installs the best community skills from GitHub —<br>
-  so you never need to pre-configure skills again.
+  <strong>You ask. skills-123 finds community skills on GitHub, reads their knowledge,<br>
+  and injects it into context — so you get better output without installing anything.</strong><br>
+  <sup>Chinese · English · Japanese · Korean · Spanish — task intent, not trigger words.</sup>
 </p>
 
 <p align="center">
-  🌐 Read this in: <a href="README.zh.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a>
+  🌐 <a href="README.zh.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a>
 </p>
 
 ---
 
-## ✨ What It Does
+## ✨ The 30-Second Pitch
+
+skills-123 is a **meta-skill** — a skill that uses other skills. Here's what happens:
 
 ```
-You: "How do I set up PostgreSQL backups to S3?"
+You: "Help me build a dashboard for tracking real estate projects"
           │
           ▼
-┌─────────────────────────────────┐
-│  🔍 skills-123-suggest          │  Passive scout — notices "PostgreSQL" + "S3"
-│  "Community skills found!        │  does a quick WebSearch, then nudges you
-│   Want me to find the best one?" │
-└──────────────┬──────────────────┘
-               │  User: "Yes!"
-               ▼
-┌─────────────────────────────────┐
-│  🧠 skills-123 (Phase 1-5)      │  Active engine — full pipeline
-│                                  │
-│  🔎 SEARCH  4 sources parallel   │  GitHub + registries + awesome lists
-│  📊 EVALUATE 5-dimension score   │  Stars · Recency · Author · Relevance · Security
-│  📋 PRESENT top 3 with table     │  Ranked + security flags
-│  📦 INSTALL with safety scan     │  22 critical patterns auto-rejected
-│  ✅ VERIFY and cache             │  Ready to use!
-└──────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  🤖 skills-123 — The Skill Proxy                     │
+│                                                      │
+│  🔎 DISCOVER   Search GitHub for relevant skills     │  "dashboard UI skill" → 3 parallel queries
+│  📖 FETCH      Read the best SKILL.md files directly │  Raw GitHub content, no clone needed
+│  💉 INJECT     Extract patterns, best practices,     │  Anti-AI-slop · design systems · templates
+│                domain expertise                      │
+│  ✅ DELIVER    Complete your task — now with         │  Higher quality, zero extra steps
+│                community knowledge baked in          │
+└─────────────────────────────────────────────────────┘
           │
           ▼
-You: "postgres-s3-backup skill is now installed. Ready to use!"
+You get a distinctive, enterprise-grade dashboard.
+(Optional: "Want me to install that skill for next time?")
 ```
+
+**That's it.** No browsing GitHub. No reading SKILL.md files yourself. No installing things you might never use again. Just ask for what you want, and skills-123 makes it better.
 
 ---
 
-## 🏗️ Architecture
+## 🎯 Why "The Skill Proxy"?
 
-```
-skills-123/
-├── skills/
-│   ├── skills-123/              🔍 Active: 5-phase search → evaluate → install
-│   │   ├── SKILL.md             Core skill (self-contained instructions)
-│   │   ├── scripts/             Shell accelerators
-│   │   │   ├── search-github.sh       Query generator
-│   │   │   ├── evaluate-skill.sh      5-dimension scoring engine
-│   │   │   ├── install-from-github.sh Git clone / tarball dual-strategy
-│   │   │   └── scan-security.sh      22 critical + 18 warning patterns
-│   │   ├── references/          Detailed docs (on-demand loading)
-│   │   │   ├── search-sources.md      12 data sources cataloged
-│   │   │   ├── scoring-rubric.md      Scoring methodology + examples
-│   │   │   └── safety-patterns.md     Attack vector catalog
-│   │   └── cache/               Runtime cache (auto-created)
-│   └── skills-123-suggest/      💡 Passive: lightweight scout, never installs
-│       └── SKILL.md             3-step: assess → quick check → suggest
-├── docs/                        📖 Per-agent installation guides
-│   ├── codex.md                 OpenAI Codex
-│   ├── cursor.md                Cursor IDE
-│   ├── vscode.md                VSCode / Copilot
-│   ├── coze.md                  Coze (扣子)
-│   ├── windsurf.md              Windsurf
-│   ├── gemini-cli.md            Google Gemini CLI
-│   ├── opencode.md              OpenCode
-│   └── aider.md                 Aider
-├── install.sh                   ⚡ One-command installer
-├── LICENSE                      MIT
-└── README.md                    You are here
-```
+| Traditional skill model | skills-123 |
+|---|---|
+| You find skills → evaluate them → install them → use them | You ask → skills-123 proxies the knowledge to you |
+| Skills sit on your disk, loaded into every session | Only relevant fragments enter your context, on-demand |
+| Must know what skills exist | Discovery is automatic |
+| English-only trigger words | 5 languages, judged by **task intent** |
+
+**skills-123 inverts the relationship:** skills work for you, not the other way around. Like a proxy server sits between you and the internet, skills-123 sits between you and GitHub's skill ecosystem — fetching exactly what you need, exactly when you need it.
 
 ---
 
-## 🚀 Installation
+## 📂 Proof: Same Prompt, With vs. Without
 
-### Prerequisites
-- **Claude Code** installed
-- `curl` and `git` (standard on macOS/Linux)
+| Prompt | Without skills-123 | With skills-123 |
+|--------|:---:|:---:|
+| [`example/en/prompt.md`](example/en/prompt.md) | [![Generic AI output](example/screenshots/en-without.png)](example/en/output-without-skill.html) | [![skills-123 enhanced](example/screenshots/en-with.png)](example/en/output-with-skill.html) |
+| *"Build me a dashboard for real estate"* | Purple glow · Inter font · Chart.js CDN · looks AI-generated | Gold accents · enterprise layout · CSS-only charts · distinctive |
 
-### One-command install
+**Without skills-123:** you get whatever the base model generates — usually the same purple-glow, Inter-font, Chart.js-dependent "AI aesthetic" everyone else gets.
+
+**With skills-123:** community design patterns, anti-slop principles, and domain expertise are injected before the model writes a single line.
+
+> See all 5 languages: [简体中文](example/zh/output-with-skill.html) · [日本語](example/ja/output-with-skill.html) · [한국어](example/ko/output-with-skill.html) · [Español](example/es/output-with-skill.html)
+
+---
+
+## 🚀 Install
 
 ```bash
+# One command
 curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
-```
 
-### Manual install
-
-```bash
+# Or manual
 git clone https://github.com/jasonanewcoder/skills-123.git
-cd skills-123
-bash install.sh
+cd skills-123 && bash install.sh
 ```
 
-Then **restart Claude Code**. Two new skills will appear:
-- `skills-123` — the active search engine
-- `skills-123-suggest` — the passive suggestion scout
+Restart Claude Code. Two skills appear: `skills-123` (the proxy) and `skills-123-suggest` (the scout).
 
-### Install on other agents
+### Other agents
 
-skills-123 works with all major AI coding agents. See per-agent guides:
-
-| Agent | Guide | Native Support |
+| Agent | Guide | |
 |-------|-------|:---:|
-| **Claude Code** | *(built-in)* | ✅ Full |
-| **OpenAI Codex** | [codex.md](docs/codex.md) | ✅ SKILL.md |
-| **Cursor** | [cursor.md](docs/cursor.md) | ⚠️ MDC adaptation |
-| **VSCode / Copilot** | [vscode.md](docs/vscode.md) | ⚠️ Flat format |
-| **Coze (扣子)** | [coze.md](docs/coze.md) | ✅ Import |
-| **Windsurf** | [windsurf.md](docs/windsurf.md) | ✅ SKILL.md |
-| **Gemini CLI** | [gemini-cli.md](docs/gemini-cli.md) | ✅ SKILL.md |
-| **OpenCode** | [opencode.md](docs/opencode.md) | ✅ SKILL.md |
-| **Aider** | [aider.md](docs/aider.md) | ⚠️ Plain md |
+| **Claude Code** | *(built-in)* | ✅ |
+| **OpenAI Codex** | [codex.md](docs/codex.md) | ✅ |
+| **Cursor** | [cursor.md](docs/cursor.md) | ⚠️ |
+| **Coze (扣子)** | [coze.md](docs/coze.md) | ✅ |
+| **Windsurf** | [windsurf.md](docs/windsurf.md) | ✅ |
+| **Gemini CLI** | [gemini-cli.md](docs/gemini-cli.md) | ✅ |
+| **OpenCode** | [opencode.md](docs/opencode.md) | ✅ |
+| **Aider** | [aider.md](docs/aider.md) | ⚠️ |
+| **VSCode / Copilot** | [vscode.md](docs/vscode.md) | ⚠️ |
 
 ---
 
 ## 💬 Usage
 
-### Active Search
+### Proxy Mode — Default, Automatic
 
-Just ask naturally — skills-123 triggers automatically:
+Just talk normally. skills-123 detects task intent in any language and activates:
+
+```
+"帮我写一个酷炫的dashboard网页"       → finds dashboard/UI skills
+"Build me a project tracker"          → finds project management skills
+"不動産の管理画面を作って"              → finds dashboard + real estate skills
+"대시보드 만들어 줘"                  → finds visualization skills
+"Construye un panel inmobiliario"     → finds real estate + UI skills
+```
+
+### Install Mode — When You Want to Keep One
 
 ```
 "Find me skills for Kubernetes deployment"
-"Are there any good skills for PostgreSQL backups?"
-"Search for React testing skills"
-"I need to set up a CI/CD pipeline — any skills for that?"
+"Install that dashboard skill from earlier"
+"Search for PostgreSQL backup skills"
 ```
 
-### Passive Suggestion
+### The Scout — `skills-123-suggest`
 
-When you mention a specific technology, `skills-123-suggest` quietly checks GitHub and nudges you:
+Watches for task prompts and nudges when relevant skills exist:
 
-> 💡 I noticed there are community Claude Code skills for **Kubernetes** on GitHub. Would you like me to search for the best ones?
+> 💡 GitHub has community skills for **dashboard design**. Want me to find and apply the best ones?
 
-### What Happens Under the Hood
+### Power Users: Guaranteed Triggering via Hook
 
-| Phase | What It Does |
-|:-----:|------|
-| **0 — Assess** | Determines if external skills are actually needed (avoids wasting tokens) |
-| **1 — Search** | Queries 4 sources in parallel (GitHub topic, code search, registries, awesome lists) |
-| **2 — Evaluate** | Scores on 5 dimensions: community · recency · author trust · relevance · security |
-| **3 — Present** | Shows top 3-5 candidates with scores, security flags, and recommendations |
-| **4 — Install** | Security scan → user confirmation → git clone/tarball → verify → cache |
+The default trigger depends on the model reading the skill description and deciding to invoke it. For **guaranteed triggering on every prompt**, add a hook to your Claude Code settings:
+
+```json
+// ~/.claude/settings.json or .claude/settings.local.json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [{
+          "type": "command",
+          "command": "echo 'skills-123-suggest' | claude --skill skills-123-suggest"
+        }]
+      }
+    ]
+  }
+}
+```
+
+This bypasses the model's trigger decision entirely — every interaction is checked. Trade-off: increases latency by ~1-2s per prompt.
 
 ---
 
-## 🛡️ Scoring & Security
+## 🛡️ Safety
 
-### 5-Dimension Quality Score (0-100)
-
-| Dimension | Weight | What It Measures |
-|-----------|:------:|------------------|
-| **Community** | 0-15 | Stars on log scale — 1000+ stars = max |
-| **Recency** | 0-10 | Updated ≤3mo = 10, ≤6mo = 7, ≤1y = 4, older = 1 |
-| **Author Trust** | 0-15 | Verified org +5, known publisher +5, 5+ contributors +5 |
-| **Relevance** | 0-30 | Keyword match ratio against your query |
-| **Security** | 0-20 | Clean = 20, warnings = 10, **critical = auto-disqualify** |
-
-### Security Model
+Every skill found gets scanned before use or install:
 
 ```
-Skill found → Scan SKILL.md content
-                    │
-        ┌───────────┼───────────┐
-        ▼           ▼           ▼
-   ✅ Clean     ⚠️ Warning    🚫 Critical
-   Install      Flag + ask    Auto-reject
+Skill found → Scan content
+                  │
+      ┌───────────┼───────────┐
+      ▼           ▼           ▼
+   ✅ Clean    ⚠️ Warning   🚫 Critical
+   Use it      Flag first   Auto-reject
 ```
 
-**22 critical patterns** trigger auto-rejection: `curl | sh`, `eval $`, base64-to-pipe, `rm -rf /`, reverse shells, credential theft, Python injection.
+| Signal | Weight | |
+|--------|:------:|---|
+| **Community** | 0–15 | Stars (log scale) |
+| **Recency** | 0–10 | Updated ≤3mo = 10 |
+| **Author Trust** | 0–15 | Verified org · known publisher · contributors |
+| **Relevance** | 0–30 | Keyword match vs. your query |
+| **Security** | 0–20 | Clean = 20 · warnings = 10 · **critical = -1** |
 
-**18 warning patterns** flagged for review: network requests, `sudo`, `chmod`, package installs, sensitive file access.
+**22 critical patterns** auto-rejected (`curl | sh`, `eval $`, `rm -rf /`, reverse shells…). **18 warning patterns** flagged for review.
 
 ---
 
-## 🔬 Why skills-123?
+## 🏗️ Project Layout
 
-### Compared to Existing Tools
+```
+skills-123/
+├── skills/
+│   ├── skills-123/SKILL.md          🤖 The Skill Proxy (Proxy + Install modes)
+│   │   ├── scripts/                 Search · evaluate · install · security scan
+│   │   ├── references/              Scoring rubric · safety patterns · sources
+│   │   └── cache/                   (auto-created)
+│   └── skills-123-suggest/SKILL.md  💡 The Scout (passive suggestion)
+├── example/                         📂 Before/after in 5 languages
+│   ├── zh/ en/ ja/ ko/ es/          Prompt + both outputs
+│   └── screenshots/                 10 PNG comparisons
+├── docs/                            Per-agent install guides
+├── install.sh                       One-command installer
+├── CLAUDE.md                        Project behavior
+└── LICENSE                          MIT
+```
 
-| Differentiator | skills-123 | find-skills (Vercel) | superskillret |
+---
+
+## 🔬 Compared
+
+| | skills-123 | find-skills | superskillret |
 |:---|:---:|:---:|:---:|
-| **Form factor** | Native skill (in-conversation) | npm CLI (`npx skills`) | Hook + daemon (1.4GB RAM) |
-| **External deps** | **Zero** (curl + git) | Node.js / npm | Python + ONNX |
-| **Trigger mode** | **Dual**: passive + active | Manual (CLI commands) | Auto (every prompt) |
-| **Search sources** | 4 parallel | skills.sh marketplace | 16K vector index |
-| **Quality score** | 5-dimension (transparent) | None | Cosine similarity (black-box) |
+| **Form** | Native skill (in-chat) | npm CLI | Daemon (~1.4 GB) |
+| **Deps** | **curl + git only** | Node.js | Python + ONNX |
+| **How it triggers** | **Automatic — task intent** | Manual CLI | Every prompt |
+| **Proxy mode** | ✅ (read skills directly) | ❌ | ❌ |
+| **Languages** | **5** | 1 | 1 |
 | **Security scan** | **22 critical + 18 warn** | None | None |
-| **Memory overhead** | None | None | **~1.4 GB** |
+| **Scoring** | 5-dimension, transparent | None | Cosine (black-box) |
 
-> **In one sentence:** find-skills is a search bar for the skill marketplace. superskillret is a heavy background recommendation engine. **skills-123 is your in-conversation skill advisor** — native, zero-dependency, safety-first.
-
----
-
-## 📁 Project Structure
-
-| Path | Purpose |
-|------|---------|
-| `skills/skills-123/SKILL.md` | Core skill with full 5-phase workflow |
-| `skills/skills-123/scripts/` | Shell scripts for search, evaluate, install, security |
-| `skills/skills-123/references/` | Deep-dive docs (sources, scoring, safety) |
-| `skills/skills-123/cache/` | Runtime cache (auto-created on first use) |
-| `skills/skills-123-suggest/SKILL.md` | Passive suggestion companion |
-| `docs/` | Per-agent installation guides |
-| `install.sh` | One-command installer |
+> find-skills is a search bar. superskillret is a heavy recommender. **skills-123 is your skill proxy — it finds, fetches, and injects community knowledge so you don't have to.**
 
 ---
 
-## 👥 Authors
+## 👥 Authors · 📄 License
 
-**jasonanewcoder, Claude Code, DeepSeek**
-
-## 📄 License
-
-MIT — see [LICENSE](LICENSE) for full text.
+**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

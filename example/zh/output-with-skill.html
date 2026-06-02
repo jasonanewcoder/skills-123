@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>万润置地 — 项目进展看板</title>
+<style>
+  /* ========================================
+     Design System: Modern Enterprise Dark
+     Anti "AI slop": no purple gradients, no Inter font, no generic card grid
+     Inspired by: oikon48/cc-frontend-skills (Tech Noir + Editorial)
+     ======================================== */
+
+  :root {
+    --bg-deep: #0a0c10;
+    --bg-surface: #13161d;
+    --bg-card: #1a1e28;
+    --bg-card-hover: #1f2431;
+    --border: #252a36;
+    --border-active: #3d4558;
+    --text-primary: #e4e6ed;
+    --text-secondary: #9298a8;
+    --text-muted: #5e6478;
+    --accent: #c9a45c;       /* gold — real estate warmth */
+    --accent-2: #5b8c5a;     /* sage green — progress */
+    --danger: #c85554;       /* muted red — delays */
+    --info: #5a8db5;         /* steel blue */
+    --font-display: "DM Serif Display", "Noto Serif SC", Georgia, serif;
+    --font-body: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+    --radius-sm: 4px;
+    --radius: 8px;
+    --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Layout ---- */
+  .app-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 64px 1fr;
+    grid-template-areas:
+      "nav header"
+      "nav main";
+    min-height: 100vh;
+  }
+
+  /* ---- Header ---- */
+  .header {
+    grid-area: header;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo {
+    width: 34px; height: 34px;
+    background: var(--accent);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--bg-deep);
+  }
+  .header-title {
+    font-family: var(--font-display);
+    font-size: 18px;
+    letter-spacing: -0.02em;
+  }
+  .header-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+  .header-actions {
+    display: flex;
+    gap: 16px;
+  }
+  .header-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .header-btn:hover { background: var(--bg-card-hover); border-color: var(--border-active); }
+  .header-btn.primary { background: var(--accent); color: var(--bg-deep); border: none; font-weight: 600; }
+
+  /* ---- Sidebar ---- */
+  .sidebar {
+    grid-area: nav;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+  }
+  .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+  .nav-item.active { background: var(--bg-card); color: var(--accent); font-weight: 600; }
+  .nav-icon { width: 20px; text-align: center; font-size: 16px; }
+  .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 20px 14px 8px; }
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent); color: var(--bg-deep);
+    font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 99px;
+  }
+
+  /* ---- Main ---- */
+  .main {
+    grid-area: main;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    overflow-y: auto;
+    max-height: calc(100vh - 64px);
+  }
+
+  /* ---- KPI Row ---- */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.total::after { background: var(--accent); }
+  .kpi-card.ongoing::after { background: var(--info); }
+  .kpi-card.completed::after { background: var(--accent-2); }
+  .kpi-card.delayed::after { background: var(--danger); }
+
+  .kpi-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 6px;
+  }
+  .kpi-value {
+    font-family: var(--font-display);
+    font-size: 42px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+  }
+  .kpi-change {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .kpi-change.up { color: var(--accent-2); }
+  .kpi-change.down { color: var(--danger); }
+
+  /* ---- Chart Row ---- */
+  .chart-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+  .panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .panel-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    letter-spacing: -0.01em;
+  }
+  .panel-badge {
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  /* ---- Bar Chart (CSS) ---- */
+  .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-label { width: 100px; font-size: 13px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 28px; background: var(--bg-deep); border-radius: var(--radius-sm); position: relative; overflow: hidden; }
+  .bar-fill {
+    height: 100%; border-radius: var(--radius-sm);
+    display: flex; align-items: center; padding-left: 10px;
+    font-size: 12px; font-weight: 600; color: #fff;
+  }
+  .bar-fill.gold { background: linear-gradient(90deg, #c9a45c, #d4b87a); }
+  .bar-fill.sage { background: linear-gradient(90deg, #5b8c5a, #6fa86e); }
+  .bar-fill.steel { background: linear-gradient(90deg, #5a8db5, #74a3c8); }
+  .bar-fill.rust { background: linear-gradient(90deg, #c85554, #d4706f); }
+
+  /* ---- Donut (SVG) ---- */
+  .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .donut-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  /* ---- Project Table ---- */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-muted);
+    padding: 12px 16px; border-bottom: 2px solid var(--border);
+    font-weight: 600;
+  }
+  tbody td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: var(--bg-card-hover); }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .status-chip.ongoing { background: rgba(90,141,181,0.15); color: var(--info); }
+  .status-chip.completed { background: rgba(91,140,90,0.15); color: var(--accent-2); }
+  .status-chip.delayed { background: rgba(200,85,84,0.15); color: var(--danger); }
+  .status-chip.planning { background: rgba(201,164,92,0.15); color: var(--accent); }
+
+  .progress-bar {
+    width: 100px; height: 6px;
+    background: var(--bg-deep);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 99px;
+    background: var(--accent-2);
+  }
+
+  .text-mono { font-family: var(--font-mono); font-size: 13px; }
+  .text-sm { font-size: 13px; color: var(--text-secondary); }
+
+  /* ---- Filters ---- */
+  .filter-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .search-input {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    width: 280px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-muted); }
+
+  .filter-select {
+    background: var(--bg-deep);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* ---- Timeline ---- */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-item::before {
+    content: ''; position: absolute;
+    left: -24px; top: 6px;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: var(--bg-card);
+  }
+  .tl-item.milestone::before { background: var(--accent); }
+  .tl-date { font-size: 12px; color: var(--text-muted); }
+  .tl-title { font-weight: 600; font-size: 14px; }
+  .tl-desc { font-size: 13px; color: var(--text-secondary); }
+
+  /* ---- Responsive ---- */
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .app-shell { grid-template-columns: 1fr; grid-template-areas: "header" "main"; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div style="font-family:var(--font-display);font-size:20px;padding:0 14px 24px;letter-spacing:-0.02em;">
+      万润<span style="color:var(--accent)">·</span>置地
+    </div>
+    <a class="nav-item active"><span class="nav-icon">📊</span> 项目总览</a>
+    <a class="nav-item"><span class="nav-icon">🏗️</span> 在建项目 <span class="nav-badge">12</span></a>
+    <a class="nav-item"><span class="nav-icon">📋</span> 项目列表</a>
+    <div class="nav-section">分析</div>
+    <a class="nav-item"><span class="nav-icon">📈</span> 进度趋势</a>
+    <a class="nav-item"><span class="nav-icon">💰</span> 投资概算</a>
+    <a class="nav-item"><span class="nav-icon">⚠️</span> 风险预警 <span class="nav-badge" style="background:var(--danger)">3</span></a>
+    <div class="nav-section">管理</div>
+    <a class="nav-item"><span class="nav-icon">👥</span> 团队分配</a>
+    <a class="nav-item"><span class="nav-icon">📄</span> 报表导出</a>
+    <a class="nav-item"><span class="nav-icon">⚙️</span> 设置</a>
+  </nav>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo">华</div>
+      <div>
+        <div class="header-title">项目进展看板</div>
+        <div class="header-subtitle">万润置地 · 华东大区 · 2026年度</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" onclick="refreshData()">🔄 刷新数据</button>
+      <button class="header-btn primary">+ 新建项目</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main" id="main-content">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card total">
+        <div class="kpi-label">项目总数</div>
+        <div class="kpi-value" style="color:var(--accent)">38</div>
+        <div class="kpi-change up">▲ 12% <span style="color:var(--text-muted)">同比去年</span></div>
+      </div>
+      <div class="kpi-card ongoing">
+        <div class="kpi-label">在建项目</div>
+        <div class="kpi-value" style="color:var(--info)">12</div>
+        <div class="kpi-change">🏗️ 总面积 286 万㎡</div>
+      </div>
+      <div class="kpi-card completed">
+        <div class="kpi-label">已竣工</div>
+        <div class="kpi-value" style="color:var(--accent-2)">21</div>
+        <div class="kpi-change up">▲ 3 <span style="color:var(--text-muted)">本年度</span></div>
+      </div>
+      <div class="kpi-card delayed">
+        <div class="kpi-label">进度滞后</div>
+        <div class="kpi-value" style="color:var(--danger)">3</div>
+        <div class="kpi-change down">⚠ 需重点关注</div>
+      </div>
+    </div>
+
+    <!-- Chart Row -->
+    <div class="chart-row">
+      <!-- Bar Chart: 各业态投资进度 -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">各业态投资完成率</span>
+          <span class="panel-badge">2026 Q2</span>
+        </div>
+        <div class="bar-chart">
+          <div class="bar-row">
+            <span class="bar-label">住宅</span>
+            <div class="bar-track"><div class="bar-fill gold" style="width:87%">87%</div></div>
+            <span class="text-mono">¥ 124.8亿</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">商业综合体</span>
+            <div class="bar-track"><div class="bar-fill sage" style="width:64%">64%</div></div>
+            <span class="text-mono">¥ 89.3亿</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">写字楼</span>
+            <div class="bar-track"><div class="bar-fill steel" style="width:72%">72%</div></div>
+            <span class="text-mono">¥ 56.1亿</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">酒店/公寓</span>
+            <div class="bar-track"><div class="bar-fill rust" style="width:41%">41%</div></div>
+            <span class="text-mono">¥ 32.7亿</span>
+          </div>
+          <div class="bar-row">
+            <span class="bar-label">产业园区</span>
+            <div class="bar-track"><div class="bar-fill gold" style="width:58%">58%</div></div>
+            <span class="text-mono">¥ 41.5亿</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Donut: 项目阶段分布 -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">项目阶段分布</span>
+          <span class="panel-badge">38 个项目</span>
+        </div>
+        <div class="donut-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <!-- 主体施工 38% | 装修阶段 24% | 前期报建 18% | 已竣工 15% | 基坑 5% -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--bg-deep)" stroke-width="24"/>
+            <!-- 主体施工: 0 → 136.8° -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--info)" stroke-width="24"
+              stroke-dasharray="138.2 363.2" stroke-dashoffset="0" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <!-- 装修阶段: 136.8 → 223.2° -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent)" stroke-width="24"
+              stroke-dasharray="87.3 363.2" stroke-dashoffset="-138.2" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <!-- 前期报建: 223.2 → 288° -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent-2)" stroke-width="24"
+              stroke-dasharray="65.4 363.2" stroke-dashoffset="-225.5" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <!-- 已竣工: 288 → 342° -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="#6b7d8e" stroke-width="24"
+              stroke-dasharray="54.4 363.2" stroke-dashoffset="-290.9" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <!-- 基坑: 342 → 360° -->
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--danger)" stroke-width="24"
+              stroke-dasharray="18.0 363.2" stroke-dashoffset="-345.3" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <text x="80" y="76" text-anchor="middle" fill="var(--text-primary)" font-family="var(--font-display)" font-size="28" font-weight="700">38</text>
+            <text x="80" y="96" text-anchor="middle" fill="var(--text-muted)" font-size="11">个项目</text>
+          </svg>
+          <div class="donut-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--info)"></span> 主体施工 38%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> 装修阶段 24%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent-2)"></span> 前期报建 18%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#6b7d8e"></span> 已竣工 15%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span> 基坑施工 5%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Table -->
+    <div class="panel" id="project-table-panel">
+      <div class="panel-header">
+        <span class="panel-title">在建重点项目</span>
+        <div class="filter-bar">
+          <input type="text" class="search-input" id="searchInput" placeholder="搜索项目名称、城市、业态..." oninput="filterTable()">
+          <select class="filter-select" id="statusFilter" onchange="filterTable()">
+            <option value="all">全部状态</option>
+            <option value="ongoing">🔄 在建</option>
+            <option value="completed">✅ 已竣工</option>
+            <option value="delayed">⚠️ 滞后</option>
+            <option value="planning">📋 规划中</option>
+          </select>
+          <select class="filter-select" id="typeFilter" onchange="filterTable()">
+            <option value="all">全部业态</option>
+            <option value="住宅">🏠 住宅</option>
+            <option value="商业综合体">🏬 商业综合体</option>
+            <option value="写字楼">🏢 写字楼</option>
+            <option value="酒店">🏨 酒店/公寓</option>
+            <option value="产业园区">🏭 产业园区</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>项目编号</th>
+              <th>项目名称</th>
+              <th>城市</th>
+              <th>业态</th>
+              <th>建筑面积</th>
+              <th>总投资</th>
+              <th>进度</th>
+              <th>状态</th>
+              <th>预计交付</th>
+              <th>项目经理</th>
+            </tr>
+          </thead>
+          <tbody id="projectTableBody"></tbody>
+        </table>
+      </div>
+      <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;" id="tableFooter">
+        显示 <span id="visibleCount">12</span> / 38 个项目
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="chart-row">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">关键里程碑</span>
+          <span class="panel-badge">2026 H1 — H2</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item milestone">
+            <div class="tl-date">2026-01-15</div>
+            <div class="tl-title">上海·苏河湾万象天地 — 主体结构封顶</div>
+            <div class="tl-desc">商业综合体 28万㎡ | 提前 15 天完成</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">2026-03-20</div>
+            <div class="tl-title">杭州·钱江世纪城 — 精装修进场</div>
+            <div class="tl-desc">住宅 22万㎡ · 8栋高层 | 按计划推进</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">2026-04-10</div>
+            <div class="tl-title">南京·河西CBD — 幕墙施工完成</div>
+            <div class="tl-desc">写字楼 15万㎡ · 56层超高层</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">2026-05-05</div>
+            <div class="tl-title">苏州·工业园区 — 竣工验收</div>
+            <div class="tl-desc">产业园区 45万㎡ | ✅ 已交付</div>
+          </div>
+          <div class="tl-item milestone">
+            <div class="tl-date">2026-06-30</div>
+            <div class="tl-title">合肥·滨湖科学城 — 基坑开挖</div>
+            <div class="tl-desc">产业园区 32万㎡ · 一期工程 | ⚠️ 滞后 21 天</div>
+          </div>
+          <div class="tl-item">
+            <div class="tl-date">2026-09-15</div>
+            <div class="tl-title">宁波·东部新城 — 主体施工过半</div>
+            <div class="tl-desc">住宅+商业 35万㎡ | 按计划推进</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">⚠️ 风险预警</span>
+          <span class="panel-badge" style="background:rgba(200,85,84,0.15);color:var(--danger);border-color:var(--danger)">需关注</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)">
+            <div style="font-weight:600;font-size:14px;">合肥·滨湖科学城</div>
+            <div style="font-size:13px;color:var(--text-secondary)">基坑施工滞后 21 天 — 土方外运受环保管控影响</div>
+            <div style="font-size:12px;color:var(--danger);margin-top:4px">风险等级: 🟡 中</div>
+          </div>
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)">
+            <div style="font-weight:600;font-size:14px;">上海·北外滩中心</div>
+            <div style="font-size:13px;color:var(--text-secondary)">幕墙供应商产能不足，材料进场延迟 10 天</div>
+            <div style="font-size:12px;color:var(--danger);margin-top:4px">风险等级: 🟡 中</div>
+          </div>
+          <div style="padding:14px;background:rgba(201,164,92,0.06);border-radius:var(--radius);border-left:3px solid var(--accent)">
+            <div style="font-weight:600;font-size:14px;">杭州·云谷科技城</div>
+            <div style="font-size:13px;color:var(--text-secondary)">设计方案变更评审中，预计不影响总工期</div>
+            <div style="font-size:12px;color:var(--accent);margin-top:4px">风险等级: 🟢 低</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ======== Project Data ========
+const projects = [
+  {id:"CR-2024-001",name:"上海·苏河湾万象天地",city:"上海",type:"商业综合体",area:"28万㎡",invest:"¥ 62.3亿",progress:95,status:"ongoing",delivery:"2026-Q2",manager:"张明远"},
+  {id:"CR-2024-002",name:"杭州·钱江世纪城",city:"杭州",type:"住宅",area:"22万㎡",invest:"¥ 38.7亿",progress:68,status:"ongoing",delivery:"2026-Q4",manager:"李思涵"},
+  {id:"CR-2024-003",name:"南京·河西CBD中心",city:"南京",type:"写字楼",area:"15万㎡",invest:"¥ 45.2亿",progress:82,status:"ongoing",delivery:"2026-Q3",manager:"王建国"},
+  {id:"CR-2024-004",name:"苏州·工业园区智谷",city:"苏州",type:"产业园区",area:"45万㎡",invest:"¥ 28.9亿",progress:100,status:"completed",delivery:"2026-Q2",manager:"陈志远"},
+  {id:"CR-2024-005",name:"合肥·滨湖科学城一期",city:"合肥",type:"产业园区",area:"32万㎡",invest:"¥ 22.1亿",progress:12,status:"delayed",delivery:"2027-Q2",manager:"赵伟"},
+  {id:"CR-2024-006",name:"宁波·东部新城",city:"宁波",type:"住宅",area:"35万㎡",invest:"¥ 41.6亿",progress:51,status:"ongoing",delivery:"2027-Q1",manager:"刘芳"},
+  {id:"CR-2024-007",name:"上海·北外滩中心",city:"上海",type:"写字楼",area:"18万㎡",invest:"¥ 58.4亿",progress:44,status:"delayed",delivery:"2027-Q1",manager:"周明辉"},
+  {id:"CR-2024-008",name:"无锡·太湖新城",city:"无锡",type:"住宅",area:"26万㎡",invest:"¥ 33.2亿",progress:73,status:"ongoing",delivery:"2026-Q4",manager:"黄小燕"},
+  {id:"CR-2024-009",name:"杭州·云谷科技城",city:"杭州",type:"产业园区",area:"38万㎡",invest:"¥ 31.5亿",progress:39,status:"ongoing",delivery:"2027-Q3",manager:"吴刚"},
+  {id:"CR-2024-010",name:"南京·江北核心区",city:"南京",type:"商业综合体",area:"42万㎡",invest:"¥ 76.1亿",progress:27,status:"ongoing",delivery:"2028-Q1",manager:"孙丽华"},
+  {id:"CR-2025-001",name:"温州·瓯江新城",city:"温州",type:"住宅",area:"20万㎡",invest:"¥ 25.8亿",progress:91,status:"ongoing",delivery:"2026-Q3",manager:"郑海龙"},
+  {id:"CR-2025-002",name:"上海·前滩国际社区",city:"上海",type:"住宅",area:"16万㎡",invest:"¥ 42.0亿",progress:55,status:"ongoing",delivery:"2027-Q2",manager:"林雅文"},
+];
+
+// ======== Render Table ========
+function renderTable(data) {
+  const tbody = document.getElementById('projectTableBody');
+  tbody.innerHTML = data.map(p => {
+    const statusLabels = {
+      ongoing: ['ongoing','🔄 在建'],
+      completed: ['completed','✅ 已竣工'],
+      delayed: ['delayed','⚠️ 滞后'],
+      planning: ['planning','📋 规划中']
+    };
+    const [sc, sl] = statusLabels[p.status];
+    const progressColor = p.status === 'delayed' ? 'var(--danger)' : 'var(--accent-2)';
+    return `
+      <tr>
+        <td class="text-mono">${p.id}</td>
+        <td><strong>${p.name}</strong></td>
+        <td>${p.city}</td>
+        <td>${p.type}</td>
+        <td class="text-mono">${p.area}</td>
+        <td class="text-mono">${p.invest}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:${progressColor}"></div></div>
+            <span class="text-sm">${p.progress}%</span>
+          </div>
+        </td>
+        <td><span class="status-chip ${sc}">${sl}</span></td>
+        <td class="text-sm">${p.delivery}</td>
+        <td class="text-sm">${p.manager}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ======== Filter ========
+function filterTable() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const status = document.getElementById('statusFilter').value;
+  const type = document.getElementById('typeFilter').value;
+
+  let filtered = projects;
+  if (search) filtered = filtered.filter(p =>
+    p.name.toLowerCase().includes(search) ||
+    p.city.toLowerCase().includes(search) ||
+    p.type.toLowerCase().includes(search) ||
+    p.id.toLowerCase().includes(search)
+  );
+  if (status !== 'all') filtered = filtered.filter(p => p.status === status);
+  if (type !== 'all') filtered = filtered.filter(p => p.type === type);
+
+  renderTable(filtered);
+  document.getElementById('visibleCount').textContent = filtered.length;
+}
+
+// ======== Refresh ========
+function refreshData() {
+  const btn = document.querySelector('.header-btn');
+  btn.textContent = '⏳ 刷新中...';
+  setTimeout(() => {
+    btn.textContent = '🔄 刷新数据';
+    filterTable();
+  }, 600);
+}
+
+// ======== Init ========
+renderTable(projects);
+document.getElementById('visibleCount').textContent = projects.length;
+</script>
+
+</body>
+</html>

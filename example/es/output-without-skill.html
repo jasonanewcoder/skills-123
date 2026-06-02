@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Longteng Properties — Panel de Progreso de Proyectos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+  :root {
+    --bg-primary: #0a0e17; --bg-secondary: #111620; --bg-card: #161c28;
+    --border: rgba(255,255,255,.06); --text-primary: #edf0f5; --text-secondary: #8b92a5;
+    --accent-cyan: #00e5ff; --accent-purple: #a855f7; --accent-gold: #f59e0b;
+    --accent-green: #10b981; --accent-rose: #f43f5e;
+    --glow-cyan: 0 0 20px rgba(0,229,255,.25);
+    --glow-purple: 0 0 20px rgba(168,85,247,.25);
+    --glow-gold: 0 0 20px rgba(245,158,11,.25);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; } html { font-size:16px; }
+  body { font-family:'Inter',sans-serif; background:var(--bg-primary); color:var(--text-primary); min-height:100vh; overflow-x:hidden; }
+  .bg-grid { position:fixed; inset:0; z-index:0; pointer-events:none; background-image:linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px); background-size:60px 60px; }
+  .bg-orb { position:fixed; z-index:0; pointer-events:none; border-radius:50%; filter:blur(120px); opacity:.12; }
+  .bg-orb--cyan { width:600px; height:600px; background:#00e5ff; top:-150px; right:-100px; animation:float1 12s ease-in-out infinite; }
+  .bg-orb--purple { width:500px; height:500px; background:#a855f7; bottom:-120px; left:-120px; animation:float2 15s ease-in-out infinite; }
+  .bg-orb--gold { width:350px; height:350px; background:#f59e0b; top:40%; left:45%; animation:float3 10s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{translate:0 0} 33%{translate:40px -30px} 66%{translate:-20px 20px} }
+  @keyframes float2 { 0%,100%{translate:0 0} 33%{translate:-30px -20px} 66%{translate:25px 30px} }
+  @keyframes float3 { 0%,100%{translate:0 0} 50%{translate:20px -25px} }
+  .app { position:relative; z-index:1; display:flex; min-height:100vh; }
+  .sidebar { width:260px; background:var(--bg-secondary); border-right:1px solid var(--border); display:flex; flex-direction:column; padding:28px 20px; gap:8px; flex-shrink:0; }
+  .sidebar-logo { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .sidebar-logo .icon { width:42px; height:42px; border-radius:12px; background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .sidebar-logo .text { font-size:1rem; font-weight:700; } .sidebar-logo .text small { display:block; font-size:.65rem; font-weight:400; color:var(--text-secondary); }
+  .nav-item { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:10px; color:var(--text-secondary); font-size:.875rem; font-weight:500; cursor:pointer; transition:all .2s; text-decoration:none; }
+  .nav-item:hover { background:rgba(255,255,255,.04); color:var(--text-primary); }
+  .nav-item.active { background:rgba(0,229,255,.08); color:var(--accent-cyan); }
+  .nav-item .badge { margin-left:auto; background:var(--accent-rose); color:#fff; font-size:.7rem; padding:2px 8px; border-radius:20px; font-weight:600; }
+  .main { flex:1; padding:28px 32px 40px; display:flex; flex-direction:column; gap:24px; overflow-x:hidden; }
+  .header { display:flex; align-items:center; justify-content:space-between; }
+  .header h1 { font-size:1.5rem; font-weight:700; }
+  .header h1 span { background:linear-gradient(135deg,var(--accent-cyan),var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-actions { display:flex; gap:12px; align-items:center; }
+  .btn { padding:10px 20px; border-radius:10px; font-size:.8rem; font-weight:600; cursor:pointer; border:none; transition:all .2s; font-family:inherit; }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text-primary); }
+  .btn-outline:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+  .btn-primary { background:linear-gradient(135deg,var(--accent-cyan),#6366f1); color:#000; }
+  .btn-primary:hover { box-shadow:var(--glow-cyan); transform:translateY(-1px); }
+  .avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#6366f1,var(--accent-purple)); display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; }
+  .stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:18px; }
+  .stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:20px 24px; display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; transition:all .3s; }
+  .stat-card:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.12); }
+  .stat-card::after { content:''; position:absolute; top:-30px; right:-30px; width:80px; height:80px; border-radius:50%; opacity:.08; }
+  .stat-card--cyan::after { background:var(--accent-cyan); } .stat-card--purple::after { background:var(--accent-purple); }
+  .stat-card--gold::after { background:var(--accent-gold); } .stat-card--green::after { background:var(--accent-green); } .stat-card--rose::after { background:var(--accent-rose); }
+  .stat-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .stat-card--cyan .stat-icon { background:rgba(0,229,255,.12); color:var(--accent-cyan); }
+  .stat-card--purple .stat-icon { background:rgba(168,85,247,.12); color:var(--accent-purple); }
+  .stat-card--gold .stat-icon { background:rgba(245,158,11,.12); color:var(--accent-gold); }
+  .stat-card--green .stat-icon { background:rgba(16,185,129,.12); color:var(--accent-green); }
+  .stat-card--rose .stat-icon { background:rgba(244,63,94,.12); color:var(--accent-rose); }
+  .stat-value { font-size:1.65rem; font-weight:800; letter-spacing:-.5px; line-height:1.1; }
+  .stat-label { font-size:.78rem; color:var(--text-secondary); margin-top:2px; }
+  .stat-change { font-size:.72rem; font-weight:600; margin-top:2px; }
+  .stat-change.up { color:var(--accent-green); } .stat-change.down { color:var(--accent-rose); }
+  .grid-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; } .grid-2-alt { display:grid; grid-template-columns:1fr 1.4fr; gap:18px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+  .card { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:22px 24px; }
+  .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .card-title { font-size:.95rem; font-weight:700; }
+  .card-badge { font-size:.7rem; padding:4px 10px; border-radius:20px; font-weight:600; }
+  .card-badge--cyan { background:rgba(0,229,255,.1); color:var(--accent-cyan); }
+  .card-badge--purple { background:rgba(168,85,247,.1); color:var(--accent-purple); }
+  .project-list { display:flex; flex-direction:column; gap:16px; }
+  .project-row { display:flex; align-items:center; gap:16px; padding:14px 16px; background:rgba(255,255,255,.015); border-radius:12px; }
+  .project-row:hover { background:rgba(255,255,255,.04); }
+  .project-avatar { width:44px; height:44px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; }
+  .project-info { flex:1; min-width:0; } .project-name { font-weight:600; font-size:.875rem; }
+  .project-meta { font-size:.72rem; color:var(--text-secondary); margin-top:2px; }
+  .project-progress { width:120px; flex-shrink:0; }
+  .progress-bar { height:6px; border-radius:6px; background:rgba(255,255,255,.06); overflow:hidden; margin-bottom:4px; }
+  .progress-fill { height:100%; border-radius:6px; }
+  .progress-fill--cyan { background:linear-gradient(90deg,#06b6d4,var(--accent-cyan)); }
+  .progress-fill--purple { background:linear-gradient(90deg,#7c3aed,var(--accent-purple)); }
+  .progress-fill--gold { background:linear-gradient(90deg,#d97706,var(--accent-gold)); }
+  .progress-fill--green { background:linear-gradient(90deg,#059669,var(--accent-green)); }
+  .progress-text { font-size:.72rem; font-weight:700; }
+  .project-status { font-size:.7rem; font-weight:600; padding:4px 10px; border-radius:20px; flex-shrink:0; }
+  .status-ongoing { background:rgba(0,229,255,.1); color:var(--accent-cyan); }
+  .status-planning { background:rgba(168,85,247,.1); color:var(--accent-purple); }
+  .status-complete { background:rgba(16,185,129,.1); color:var(--accent-green); }
+  .status-delayed { background:rgba(244,63,94,.1); color:var(--accent-rose); }
+  .chart-wrap { width:100%; } .chart-wrap canvas { width:100%!important; }
+  .timeline { position:relative; padding-left:20px; } .timeline::before { content:''; position:absolute; left:7px; top:4px; bottom:4px; width:2px; background:linear-gradient(to bottom,var(--accent-cyan),var(--accent-purple)); }
+  .tl-item { position:relative; padding:0 0 20px 20px; } .tl-item:last-child { padding-bottom:0; }
+  .tl-dot { position:absolute; left:-17px; top:2px; width:12px; height:12px; border-radius:50%; border:2px solid; }
+  .tl-dot--cyan { border-color:var(--accent-cyan); background:rgba(0,229,255,.2); }
+  .tl-dot--purple { border-color:var(--accent-purple); background:rgba(168,85,247,.2); }
+  .tl-dot--gold { border-color:var(--accent-gold); background:rgba(245,158,11,.2); }
+  .tl-dot--green { border-color:var(--accent-green); background:rgba(16,185,129,.2); }
+  .tl-date { font-size:.7rem; color:var(--text-secondary); } .tl-title { font-size:.83rem; font-weight:600; margin-top:2px; }
+  .tl-desc { font-size:.72rem; color:var(--text-secondary); margin-top:2px; }
+  .activity-list { display:flex; flex-direction:column; gap:14px; }
+  .act-item { display:flex; gap:12px; align-items:flex-start; } .act-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:6px; }
+  .act-dot--cyan { background:var(--accent-cyan); box-shadow:0 0 8px var(--accent-cyan); }
+  .act-dot--purple { background:var(--accent-purple); box-shadow:0 0 8px var(--accent-purple); }
+  .act-dot--gold { background:var(--accent-gold); box-shadow:0 0 8px var(--accent-gold); }
+  .act-text { font-size:.8rem; line-height:1.5; } .act-text strong { font-weight:600; } .act-time { font-size:.68rem; color:var(--text-secondary); }
+  .city-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .city-dot { background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center; }
+  .city-dot:hover { border-color:var(--accent-cyan); background:rgba(0,229,255,.03); }
+  .city-name { font-size:.78rem; font-weight:600; } .city-count { font-size:.7rem; color:var(--text-secondary); margin-top:2px; }
+  .city-bar { height:3px; border-radius:3px; margin-top:8px; }
+  .city-bar--cyan { background:var(--accent-cyan); } .city-bar--purple { background:var(--accent-purple); }
+  .city-bar--gold { background:var(--accent-gold); } .city-bar--rose { background:var(--accent-rose); }
+  @media(max-width:1400px){.stats-row{grid-template-columns:repeat(3,1fr)}.grid-2,.grid-2-alt{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr 1fr}}
+  @media(max-width:900px){.sidebar{display:none}.main{padding:20px 16px}.stats-row{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="bg-grid"></div><div class="bg-orb bg-orb--cyan"></div><div class="bg-orb bg-orb--purple"></div><div class="bg-orb bg-orb--gold"></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="sidebar-logo"><div class="icon">🏗️</div><div class="text">Longteng<small>Properties Group</small></div></div>
+    <a class="nav-item active">📊 Resumen</a><a class="nav-item">🗺️ Distribución</a><a class="nav-item">📋 Construcción</a>
+    <a class="nav-item">💰 Finanzas</a><a class="nav-item">👥 Equipos</a><a class="nav-item">📈 Ventas</a>
+    <a class="nav-item">⚙️ Ajustes</a><a class="nav-item">📝 Aprobaciones <span class="badge">12</span></a>
+  </aside>
+  <main class="main">
+    <div class="header"><div><h1>Progreso · <span>Panel en Vivo</span></h1><div style="font-size:.78rem;color:var(--text-secondary);margin-top:4px;">Actualizado: 2026-06-02 09:30 CST</div></div><div class="header-actions"><button class="btn btn-outline">📅 2026 Q2</button><button class="btn btn-outline">📥 Exportar</button><button class="btn btn-primary">+ Nuevo</button><div class="avatar">Z</div></div></div>
+    <div class="stats-row">
+      <div class="stat-card stat-card--cyan"><div class="stat-icon">🏗️</div><div><div class="stat-value">48</div><div class="stat-label">En Construcción</div><div class="stat-change up">↑ 12% interanual</div></div></div>
+      <div class="stat-card stat-card--green"><div class="stat-icon">✅</div><div><div class="stat-value">156</div><div class="stat-label">Entregados</div><div class="stat-change up">↑ 8.3% interanual</div></div></div>
+      <div class="stat-card stat-card--purple"><div class="stat-icon">📐</div><div><div class="stat-value">2.840<span style="font-size:.9rem"> M m²</span></div><div class="stat-label">Superficie Total</div><div class="stat-change up">↑ 15.6% interanual</div></div></div>
+      <div class="stat-card stat-card--gold"><div class="stat-icon">💰</div><div><div class="stat-value">¥ 1.286<span style="font-size:.9rem">B</span></div><div class="stat-label">Inversión Total</div><div class="stat-change up">↑ 22.1% interanual</div></div></div>
+      <div class="stat-card stat-card--rose"><div class="stat-icon">🏠</div><div><div class="stat-value">32.500<span style="font-size:.9rem"> uds.</span></div><div class="stat-label">Entrega Prevista</div><div class="stat-change down">↓ 3.2% trimestral</div></div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><div class="card-header"><div class="card-title">📊 Producción Mensual (¥ 100M)</div><span class="card-badge card-badge--cyan">2026</span></div><div class="chart-wrap"><canvas id="chartBar"></canvas></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">🚩 Hitos Clave</div><span class="card-badge card-badge--purple">Seguimiento</span></div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot tl-dot--green"></div><div class="tl-date">2026-01-15</div><div class="tl-title">Jade Riverside · Fase I — Estructura Terminada</div><div class="tl-desc">18 días antes de lo previsto, ahorro de ~¥ 3.2M</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--cyan"></div><div class="tl-date">2026-02-28</div><div class="tl-title">Yunqi Taoyuan · Inicio de Acabados Interiores</div><div class="tl-desc">8 edificios en construcción simultánea, entrega Q3</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--purple"></div><div class="tl-date">2026-03-20</div><div class="tl-title">Starbay · Permiso de Preventa Obtenido</div><div class="tl-desc">Primer lote de 582 unidades, tasa de suscripción > 85%</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--gold"></div><div class="tl-date">2026-04-10</div><div class="tl-title">Longteng Center Plaza · Arrendamiento 70%</div><div class="tl-desc">24 inquilinos ancla firmados, incl. 3 Fortune 500</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--cyan"></div><div class="tl-date">2026-05-08</div><div class="tl-title">Tianpu Manor · Cimentación Aprobada</div><div class="tl-desc">Tasa de calidad 99.2%, transición a estructura principal</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--purple"></div><div class="tl-date">2026-06-01</div><div class="tl-title">Haitang Bay · BIM Completamente Operativo</div><div class="tl-desc">Gestión digital cubriendo diseño, construcción y costes</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid-2-alt">
+      <div class="card"><div class="card-header"><div class="card-title">🏗️ Proyectos Destacados</div><span class="card-badge card-badge--cyan">48 Activos</span></div><div class="project-list" id="projectList"></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">📌 Estado & Distribución por Ciudad</div></div>
+        <div style="display:flex;gap:12px;"><div class="chart-wrap" style="flex:1;max-width:48%;"><canvas id="chartDoughnut"></canvas></div><div style="flex:1;"><div class="city-grid">
+          <div class="city-dot"><div class="city-name">Shanghái</div><div class="city-count">12 proyectos</div><div class="city-bar city-bar--cyan" style="width:90%"></div></div>
+          <div class="city-dot"><div class="city-name">Beijing</div><div class="city-count">8 proyectos</div><div class="city-bar city-bar--purple" style="width:65%"></div></div>
+          <div class="city-dot"><div class="city-name">Shenzhen</div><div class="city-count">7 proyectos</div><div class="city-bar city-bar--gold" style="width:55%"></div></div>
+          <div class="city-dot"><div class="city-name">Guangzhou</div><div class="city-count">6 proyectos</div><div class="city-bar city-bar--cyan" style="width:48%"></div></div>
+          <div class="city-dot"><div class="city-name">Hangzhou</div><div class="city-count">5 proyectos</div><div class="city-bar city-bar--purple" style="width:40%"></div></div>
+          <div class="city-dot"><div class="city-name">Chengdu</div><div class="city-count">4 proyectos</div><div class="city-bar city-bar--rose" style="width:32%"></div></div>
+          <div class="city-dot"><div class="city-name">Nanjing</div><div class="city-count">3 proyectos</div><div class="city-bar city-bar--gold" style="width:24%"></div></div>
+          <div class="city-dot"><div class="city-name">Wuhan</div><div class="city-count">2 proyectos</div><div class="city-bar city-bar--cyan" style="width:16%"></div></div>
+          <div class="city-dot"><div class="city-name">Chongqing</div><div class="city-count">1 proyecto</div><div class="city-bar city-bar--purple" style="width:8%"></div></div>
+        </div></div></div>
+      </div>
+    </div>
+    <div class="grid-3">
+      <div class="card"><div class="card-header"><div class="card-title">🔔 Actividad Reciente</div></div><div class="activity-list" id="activityList"></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">📈 Ventas Trimestrales (¥ 100M)</div><span class="card-badge card-badge--purple">+18% trim.</span></div><div class="chart-wrap"><canvas id="chartLine"></canvas></div></div>
+      <div class="card"><div class="card-header"><div class="card-title">👥 Equipo Clave</div></div><div id="teamList" style="display:flex;flex-direction:column;gap:12px;"></div></div>
+    </div>
+  </main>
+</div>
+<script>
+const projects=[{name:'Jade Riverside · Fase I',city:'Shanghái',type:'Residencial',progress:92,status:'ongoing',budget:'¥ 6.8B',area:'420K m²',color:'cyan'},{name:'Yunqi Taoyuan',city:'Hangzhou',type:'Residencial',progress:67,status:'ongoing',budget:'¥ 4.5B',area:'280K m²',color:'purple'},{name:'Starbay',city:'Shenzhen',type:'Uso Mixto',progress:45,status:'ongoing',budget:'¥ 12.0B',area:'650K m²',color:'gold'},{name:'Longteng Center Plaza',city:'Beijing',type:'Comercial',progress:78,status:'ongoing',budget:'¥ 8.5B',area:'380K m²',color:'cyan'},{name:'Tianpu Manor',city:'Shanghái',type:'Residencial',progress:28,status:'planning',budget:'¥ 5.2B',area:'310K m²',color:'purple'},{name:'Haitang Bay Resort',city:'Sanya',type:'Turismo',progress:15,status:'planning',budget:'¥ 20.0B',area:'1.2M m²',color:'gold'},{name:'Century Court',city:'Guangzhou',type:'Residencial',progress:100,status:'complete',budget:'¥ 3.8B',area:'220K m²',color:'green'},{name:'Royal View Peak',city:'Chengdu',type:'Residencial',progress:55,status:'delayed',budget:'¥ 2.8B',area:'180K m²',color:'rose'}];
+const activities=[{text:'<strong>Zhang Jianguo</strong> envió el informe mensual de <strong>Jade Riverside</strong>',time:'10 min',color:'cyan'},{text:'<strong>Li Min</strong> completó la inspección de <strong>acabados modelo</strong> en Yunqi',time:'32 min',color:'purple'},{text:'<strong>Wang Hailong</strong> subió el <strong>Modelo BIM v2.3</strong> de Haitang Bay',time:'1 h',color:'cyan'},{text:'<strong>Sistema</strong> detectó <strong>retraso de 12 días</strong> en Royal View Peak',time:'2 h',color:'rose'},{text:'<strong>Chen Xue</strong> inició la solicitud de <strong>permiso de preventa</strong> para Starbay',time:'3 h',color:'gold'},{text:'<strong>Longteng Center</strong> firmó <strong>2 nuevos inquilinos</strong>, tasa de ocupación 72%',time:'5 h',color:'purple'}];
+const team=[{name:'Zhang Jianguo',role:'VP de Ingeniería',initials:'Z',projects:12,color:'linear-gradient(135deg,#06b6d4,#00e5ff)'},{name:'Li Min',role:'Dir. de Diseño Interior',initials:'L',projects:8,color:'linear-gradient(135deg,#7c3aed,#a855f7)'},{name:'Wang Hailong',role:'Líder Técnico BIM',initials:'W',projects:6,color:'linear-gradient(135deg,#d97706,#f59e0b)'},{name:'Chen Xue',role:'Dir. de Marketing',initials:'C',projects:10,color:'linear-gradient(135deg,#059669,#10b981)'},{name:'Zhao Wei',role:'Gerente de Costes',initials:'Z',projects:15,color:'linear-gradient(135deg,#e11d48,#f43f5e)'}];
+const statusEs={ongoing:'En Curso',planning:'Planificación',complete:'Terminado',delayed:'Retrasado'};
+const icons={Residencial:'🏠','Uso Mixto':'🏙️',Comercial:'🏬',Turismo:'🏖️'};
+const pl=document.getElementById('projectList');
+projects.forEach(p=>{const e=document.createElement('div');e.className='project-row';e.innerHTML=`<div class="project-avatar" style="background:rgba(${p.color==='cyan'?'0,229,255':p.color==='purple'?'168,85,247':p.color==='gold'?'245,158,11':p.color==='green'?'16,185,129':'244,63,94'},.12);color:var(--accent-${p.color})">${icons[p.type]||'🏗️'}</div><div class="project-info"><div class="project-name">${p.name}</div><div class="project-meta">${p.city} · ${p.type} · ${p.budget} · ${p.area}</div></div><div class="project-progress"><div class="progress-bar"><div class="progress-fill progress-fill--${p.color}" style="width:${p.progress}%"></div></div><div class="progress-text" style="color:var(--accent-${p.color})">${p.progress}%</div></div><span class="project-status status-${p.status}">${statusEs[p.status]}</span>`;pl.appendChild(e)});
+const al=document.getElementById('activityList');activities.forEach(a=>{const e=document.createElement('div');e.className='act-item';e.innerHTML=`<div class="act-dot act-dot--${a.color}"></div><div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>`;al.appendChild(e)});
+const tl=document.getElementById('teamList');team.forEach(m=>{const e=document.createElement('div');e.style.cssText='display:flex;align-items:center;gap:14px;padding:10px 12px;background:rgba(255,255,255,.015);border-radius:12px;';e.innerHTML=`<div style="width:40px;height:40px;border-radius:50%;background:${m.color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;">${m.initials}</div><div style="flex:1"><div style="font-weight:600;font-size:.85rem;">${m.name}</div><div style="font-size:.72rem;color:var(--text-secondary);">${m.role} · ${m.projects} proy.</div></div><div style="text-align:right;"><div style="font-size:.82rem;font-weight:700;">${m.projects}</div><div style="font-size:.65rem;color:var(--text-secondary);">Proy.</div></div>`;tl.appendChild(e)});
+new Chart(document.getElementById('chartBar'),{type:'bar',data:{labels:['Jade','Yunqi','Starbay','L. Center','Tianpu','Haitang','Century','Royal V.'],datasets:[{label:'Este Mes',data:[8.2,5.6,4.8,7.1,2.3,1.8,0.2,1.5],backgroundColor:['rgba(0,229,255,.6)','rgba(168,85,247,.6)','rgba(245,158,11,.6)','rgba(0,229,255,.6)','rgba(168,85,247,.6)','rgba(245,158,11,.6)','rgba(16,185,129,.6)','rgba(244,63,94,.6)'],borderColor:['#00e5ff','#a855f7','#f59e0b','#00e5ff','#a855f7','#f59e0b','#10b981','#f43f5e'],borderWidth:1,borderRadius:6},{label:'Mes Anterior',data:[7.8,5.1,5.2,6.6,2.0,1.5,0.3,1.8],backgroundColor:'rgba(255,255,255,.06)',borderColor:'rgba(255,255,255,.12)',borderWidth:1,borderRadius:6}]},options:{responsive:true,aspectRatio:2.2,plugins:{legend:{labels:{color:'#8b92a5',font:{size:11},usePointStyle:true}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8b92a5'}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8b92a5',callback:v=>v+'亿'}}}}});
+new Chart(document.getElementById('chartDoughnut'),{type:'doughnut',data:{labels:['En Curso','Planif.','Terminado','Retrasado'],datasets:[{data:[28,8,9,3],backgroundColor:['rgba(0,229,255,.7)','rgba(168,85,247,.7)','rgba(16,185,129,.7)','rgba(244,63,94,.7)'],borderColor:['#00e5ff','#a855f7','#10b981','#f43f5e'],borderWidth:2}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{color:'#8b92a5',font:{size:11},usePointStyle:true,padding:16}}}}});
+const cl=document.getElementById('chartLine').getContext('2d'),g=cl.createLinearGradient(0,0,0,200);g.addColorStop(0,'rgba(0,229,255,.25)');g.addColorStop(1,'rgba(0,229,255,0)');
+new Chart(cl,{type:'line',data:{labels:['Q1','Q2','Q3','Q4'],datasets:[{label:'2025',data:[86,112,140,178],borderColor:'rgba(255,255,255,.2)',borderWidth:2,borderDash:[6,4],tension:.4},{label:'2026',data:[102,135,null,null],borderColor:'#00e5ff',backgroundColor:g,borderWidth:2.5,fill:true,tension:.4,pointBackgroundColor:'#00e5ff',pointRadius:5}]},options:{responsive:true,aspectRatio:2.2,plugins:{legend:{labels:{color:'#8b92a5',font:{size:11},usePointStyle:true}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8b92a5'}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#8b92a5',callback:v=>v+'亿'},min:60}}});
+</script>
+</body>
+</html>

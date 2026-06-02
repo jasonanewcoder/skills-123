@@ -1,0 +1,1 @@
+Construye un panel de control elegante y profesional para el seguimiento del progreso de proyectos de una gran empresa inmobiliaria. Usa datos de ejemplo — muestra KPIs, líneas de tiempo, desgloses de estado y alertas de riesgo. Haz que parezca una herramienta empresarial real, no una plantilla genérica.

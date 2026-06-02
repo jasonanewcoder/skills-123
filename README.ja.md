@@ -1,5 +1,7 @@
 # skills-123
 
+<h3 align="center"><em>The Skill Proxy — インストール不要。そのまま使える。</em></h3>
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/%E4%BE%9D%E5%AD%98-%E3%82%BC%E3%83%AD-brightgreen.svg" alt="依存: ゼロ">
@@ -12,90 +14,85 @@
 </p>
 
 <p align="center">
-  <strong>AI コーディングエージェントのための会話内スキルアドバイザー。</strong><br>
-  GitHub から最適なコミュニティスキルを自動的に発見、評価、インストールします——<br>
-  スキルを事前設定する必要はもうありません。
+  <strong>あなたが「作って」と言えば、skills-123 が GitHub からコミュニティスキルを発見し、<br>
+  知識を読み取り、コンテキストに注入——より良い結果を、何もインストールせずに。</strong><br>
+  <sup>中国語 · English · 日本語 · 한국어 · Español — トリガーワードではなく意図で判断。</sup>
 </p>
 
 <p align="center">
-  🌐 他の言語で読む: <a href="README.md">English</a> | <a href="README.zh.md">简体中文</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a>
+  🌐 <a href="README.md">English</a> | <a href="README.zh.md">简体中文</a> | <a href="README.ko.md">한국어</a> | <a href="README.es.md">Español</a>
 </p>
 
 ---
 
-## ✨ 機能概要
+## ✨ 30秒で理解
+
+skills-123 は **メタスキル**——スキルを使うためのスキルです。
 
 ```
-あなた：「PostgreSQL のバックアップを S3 に設定するには？」
+あなた：「不動産プロジェクト管理のダッシュボードを作って」
           │
           ▼
-┌─────────────────────────────────┐
-│  🔍 skills-123-suggest          │  パッシブスカウト
-│  「GitHub に関連スキルがあります。  │  クイック検索 → 提案
-│   最適なものを探しましょうか？」    │
-└──────────────┬──────────────────┘
-               │  あなた：「はい！」
-               ▼
-┌─────────────────────────────────┐
-│  🧠 skills-123（5フェーズ）       │  アクティブエンジン
-│                                  │
-│  🔎 検索   4ソース並列            │
-│  📊 評価   5次元スコア            │
-│  📋 表示   トップ3をテーブルで     │
-│  📦 インストール  セキュリティ検査 │
-│  ✅ 検証   キャッシュに記録       │
-└──────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  🤖 skills-123 — スキルプロキシ                      │
+│                                                      │
+│  🔎 発見   GitHub で関連スキルを検索                 │
+│  📖 取得   上位スキルの SKILL.md を直接読む           │
+│  💉 注入   パターン・ベストプラクティスを抽出         │
+│  ✅ 提供   コミュニティ知識を反映してタスクを完了     │
+└─────────────────────────────────────────────────────┘
+          │
+          ▼
+汎用AI出力ではない、プロ品質のダッシュボードが完成。
+（オプション：「このスキルをインストールしますか？」）
 ```
+
+---
+
+## 🎯 「スキルプロキシ」とは？
+
+| 従来のスキルモデル | skills-123 |
+|---|---|
+| ユーザーが検索→評価→インストール→使用 | ユーザーが依頼→skills-123 が知識をプロキシ |
+| スキルはディスクに保存、毎回読み込み | 必要な断片だけをオンデマンドで注入 |
+| どんなスキルがあるか知っている必要がある | 自動発見 |
+| 英語トリガーワードのみ | 5言語、**タスクの意図**で判断 |
+
+---
+
+## 📂 効果の比較
+
+| Prompt | skills-123 なし | skills-123 あり |
+|--------|:---:|:---:|
+| [`example/ja/prompt.md`](example/ja/prompt.md) | [![なし](example/screenshots/ja-without.png)](example/ja/output-without-skill.html) | [![あり](example/screenshots/ja-with.png)](example/ja/output-with-skill.html) |
+| *「不動産プロジェクト管理のダッシュボードを作って」* | 紫グラデ · Interフォント · Chart.js CDN | ゴールド系 · エンタープライズ · CSSチャート |
+
+> 他言語: [English](example/en/output-with-skill.html) · [简体中文](example/zh/output-with-skill.html) · [한국어](example/ko/output-with-skill.html) · [Español](example/es/output-with-skill.html)
 
 ---
 
 ## 🚀 インストール
 
 ```bash
+curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
+# または
 git clone https://github.com/jasonanewcoder/skills-123.git
-cd skills-123
-bash install.sh
+cd skills-123 && bash install.sh
 ```
 
-Claude Code を再起動すると、`skills-123` と `skills-123-suggest` が利用可能になります。
+Claude Code を再起動。`skills-123`（プロキシ）と `skills-123-suggest`（スカウト）が有効に。
 
-### 他のエージェントへのインストール
-
-| Agent | ガイド |
-|-------|-------|
-| **OpenAI Codex** | [codex.md](docs/codex.md) |
-| **Cursor** | [cursor.md](docs/cursor.md) |
-| **VSCode / Copilot** | [vscode.md](docs/vscode.md) |
-| **Coze（扣子）** | [coze.md](docs/coze.md) |
-| **Windsurf** | [windsurf.md](docs/windsurf.md) |
-| **Gemini CLI** | [gemini-cli.md](docs/gemini-cli.md) |
-| **OpenCode** | [opencode.md](docs/opencode.md) |
-| **Aider** | [aider.md](docs/aider.md) |
+| Agent | ガイド | |
+|-------|------|:---:|
+| **Claude Code** | *(内蔵)* | ✅ |
+| **OpenAI Codex** | [codex.md](docs/codex.md) | ✅ |
+| **Cursor** | [cursor.md](docs/cursor.md) | ⚠️ |
+| **Coze（扣子）** | [coze.md](docs/coze.md) | ✅ |
 
 ---
 
-## 💬 使い方
+## 🛡️ セキュリティ · 📄 ライセンス
 
-```
-"Kubernetes のデプロイに関するスキルを探して"
-"PostgreSQL のバックアップのスキルはある？"
-"CI/CD パイプラインを構築したい——関連スキルは？"
-```
+5次元スコア（コミュニティ·最新性·作者·関連性·安全性）。22の重大パターン自動拒否。
 
----
-
-## 🛡️ スコアリング & セキュリティ
-
-| 次元 | 重み | 基準 |
-|------|:----:|------|
-| **コミュニティ** | 0-15 | スター数（対数スケール） |
-| **最新性** | 0-10 | ≤3ヶ月=10, ≤6ヶ月=7, ≤1年=4 |
-| **作者の信頼** | 0-15 | 認証済み組織+5, 既知の公開者+5 |
-| **関連性** | 0-30 | キーワード一致率 × 30 |
-| **セキュリティ** | 0-20 | クリーン=20, 警告=10, **重大=自動拒否** |
-
----
-
-## 👥 作者 / 📄 ライセンス
-
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE) 参照
+**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

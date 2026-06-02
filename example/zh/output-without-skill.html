@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>龙腾地产集团 — 项目进展仪表盘</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap');
+
+  :root {
+    --bg-primary:   #0a0e17;
+    --bg-secondary: #111620;
+    --bg-card:      #161c28;
+    --border:       rgba(255,255,255,.06);
+    --text-primary: #edf0f5;
+    --text-secondary:#8b92a5;
+    --accent-cyan:  #00e5ff;
+    --accent-purple:#a855f7;
+    --accent-gold:  #f59e0b;
+    --accent-green: #10b981;
+    --accent-rose:  #f43f5e;
+    --glow-cyan:    0 0 20px rgba(0,229,255,.25);
+    --glow-purple:  0 0 20px rgba(168,85,247,.25);
+    --glow-gold:    0 0 20px rgba(245,158,11,.25);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Inter','Noto Sans SC',sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── animated bg ──────────────── */
+  .bg-grid {
+    position: fixed; inset:0; z-index:0; pointer-events:none;
+    background-image:
+      linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+  .bg-orb {
+    position: fixed; z-index:0; pointer-events:none; border-radius:50%;
+    filter: blur(120px); opacity: .12;
+  }
+  .bg-orb--cyan  { width:600px; height:600px; background:#00e5ff; top:-150px; right:-100px; animation: float1 12s ease-in-out infinite; }
+  .bg-orb--purple{ width:500px; height:500px; background:#a855f7; bottom:-120px; left:-120px; animation: float2 15s ease-in-out infinite; }
+  .bg-orb--gold  { width:350px; height:350px; background:#f59e0b; top:40%; left:45%; animation: float3 10s ease-in-out infinite; }
+  @keyframes float1 { 0%,100%{translate:0 0} 33%{translate:40px -30px} 66%{translate:-20px 20px} }
+  @keyframes float2 { 0%,100%{translate:0 0} 33%{translate:-30px -20px} 66%{translate:25px 30px} }
+  @keyframes float3 { 0%,100%{translate:0 0} 50%{translate:20px -25px} }
+
+  /* ── layout ───────────────────── */
+  .app { position:relative; z-index:1; display:flex; min-height:100vh; }
+
+  /* sidebar */
+  .sidebar {
+    width:260px; background: var(--bg-secondary); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; padding:28px 20px; gap:8px; flex-shrink:0;
+  }
+  .sidebar-logo { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .sidebar-logo .icon {
+    width:42px; height:42px; border-radius:12px;
+    background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+    display:flex; align-items:center; justify-content:center; font-size:20px;
+  }
+  .sidebar-logo .text { font-size:1rem; font-weight:700; letter-spacing:.5px; }
+  .sidebar-logo .text small { display:block; font-size:.65rem; font-weight:400; color:var(--text-secondary); }
+  .nav-item {
+    display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:10px;
+    color:var(--text-secondary); font-size:.875rem; font-weight:500; cursor:pointer;
+    transition: all .2s; text-decoration:none;
+  }
+  .nav-item:hover { background:rgba(255,255,255,.04); color:var(--text-primary); }
+  .nav-item.active { background:rgba(0,229,255,.08); color:var(--accent-cyan); }
+  .nav-item .badge { margin-left:auto; background:var(--accent-rose); color:#fff; font-size:.7rem;
+    padding:2px 8px; border-radius:20px; font-weight:600; }
+
+  /* main */
+  .main { flex:1; padding:28px 32px 40px; display:flex; flex-direction:column; gap:24px; overflow-x:hidden; }
+
+  /* header */
+  .header { display:flex; align-items:center; justify-content:space-between; }
+  .header h1 { font-size:1.5rem; font-weight:700; }
+  .header h1 span { background:linear-gradient(135deg, var(--accent-cyan), var(--accent-purple)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-actions { display:flex; gap:12px; align-items:center; }
+  .btn {
+    padding:10px 20px; border-radius:10px; font-size:.8rem; font-weight:600; cursor:pointer;
+    border:none; transition:all .2s; font-family:inherit;
+  }
+  .btn-outline { background:transparent; border:1px solid var(--border); color:var(--text-primary); }
+  .btn-outline:hover { border-color:var(--accent-cyan); color:var(--accent-cyan); }
+  .btn-primary { background:linear-gradient(135deg, var(--accent-cyan), #6366f1); color:#000; }
+  .btn-primary:hover { box-shadow: var(--glow-cyan); transform:translateY(-1px); }
+  .avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg, #6366f1, var(--accent-purple));
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.85rem; }
+
+  /* stat cards row */
+  .stats-row { display:grid; grid-template-columns:repeat(5, 1fr); gap:18px; }
+  .stat-card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
+    padding:20px 24px; display:flex; align-items:center; gap:16px; position:relative; overflow:hidden;
+    transition:all .3s;
+  }
+  .stat-card:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.12); }
+  .stat-card::after {
+    content:''; position:absolute; top:-30px; right:-30px; width:80px; height:80px; border-radius:50%;
+    opacity:.08; pointer-events:none;
+  }
+  .stat-card--cyan::after  { background:var(--accent-cyan); }
+  .stat-card--purple::after{ background:var(--accent-purple); }
+  .stat-card--gold::after  { background:var(--accent-gold); }
+  .stat-card--green::after { background:var(--accent-green); }
+  .stat-card--rose::after  { background:var(--accent-rose); }
+
+  .stat-icon {
+    width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:22px; flex-shrink:0;
+  }
+  .stat-card--cyan  .stat-icon { background:rgba(0,229,255,.12); color:var(--accent-cyan); }
+  .stat-card--purple .stat-icon{ background:rgba(168,85,247,.12); color:var(--accent-purple); }
+  .stat-card--gold  .stat-icon { background:rgba(245,158,11,.12); color:var(--accent-gold); }
+  .stat-card--green .stat-icon { background:rgba(16,185,129,.12); color:var(--accent-green); }
+  .stat-card--rose  .stat-icon { background:rgba(244,63,94,.12); color:var(--accent-rose); }
+
+  .stat-value { font-size:1.65rem; font-weight:800; letter-spacing:-.5px; line-height:1.1; }
+  .stat-label { font-size:.78rem; color:var(--text-secondary); margin-top:2px; }
+  .stat-change { font-size:.72rem; font-weight:600; margin-top:2px; }
+  .stat-change.up { color:var(--accent-green); }
+  .stat-change.down { color:var(--accent-rose); }
+
+  /* two-col */
+  .grid-2 { display:grid; grid-template-columns:1.4fr 1fr; gap:18px; }
+  .grid-2-alt { display:grid; grid-template-columns:1fr 1.4fr; gap:18px; }
+  .grid-3 { display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+
+  /* card */
+  .card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:16px;
+    padding:22px 24px; position:relative;
+  }
+  .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+  .card-title { font-size:.95rem; font-weight:700; }
+  .card-badge { font-size:.7rem; padding:4px 10px; border-radius:20px; font-weight:600; }
+  .card-badge--cyan { background:rgba(0,229,255,.1); color:var(--accent-cyan); }
+  .card-badge--purple{ background:rgba(168,85,247,.1); color:var(--accent-purple); }
+
+  /* ── project list ─────────────── */
+  .project-list { display:flex; flex-direction:column; gap:16px; }
+  .project-row {
+    display:flex; align-items:center; gap:16px; padding:14px 16px;
+    background:rgba(255,255,255,.015); border-radius:12px; transition:all .2s;
+  }
+  .project-row:hover { background:rgba(255,255,255,.04); }
+  .project-avatar {
+    width:44px; height:44px; border-radius:12px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700;
+  }
+  .project-info { flex:1; min-width:0; }
+  .project-name { font-weight:600; font-size:.875rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .project-meta { font-size:.72rem; color:var(--text-secondary); margin-top:2px; }
+  .project-progress { width:120px; flex-shrink:0; }
+  .progress-bar {
+    height:6px; border-radius:6px; background:rgba(255,255,255,.06); overflow:hidden; margin-bottom:4px;
+  }
+  .progress-fill { height:100%; border-radius:6px; transition:width 1s ease; }
+  .progress-fill--cyan { background:linear-gradient(90deg, #06b6d4, var(--accent-cyan)); }
+  .progress-fill--purple{ background:linear-gradient(90deg, #7c3aed, var(--accent-purple)); }
+  .progress-fill--gold  { background:linear-gradient(90deg, #d97706, var(--accent-gold)); }
+  .progress-fill--green { background:linear-gradient(90deg, #059669, var(--accent-green)); }
+  .progress-text { font-size:.72rem; font-weight:700; }
+  .project-status {
+    font-size:.7rem; font-weight:600; padding:4px 10px; border-radius:20px; flex-shrink:0;
+  }
+  .status-ongoing  { background:rgba(0,229,255,.1); color:var(--accent-cyan); }
+  .status-planning { background:rgba(168,85,247,.1); color:var(--accent-purple); }
+  .status-complete { background:rgba(16,185,129,.1); color:var(--accent-green); }
+  .status-delayed { background:rgba(244,63,94,.1); color:var(--accent-rose); }
+
+  /* ── chart wrappers ───────────── */
+  .chart-wrap { position:relative; width:100%; }
+  .chart-wrap canvas { width:100% !important; }
+
+  /* ── timeline ─────────────────── */
+  .timeline { position:relative; padding-left:20px; display:flex; flex-direction:column; gap:0; }
+  .timeline::before {
+    content:''; position:absolute; left:7px; top:4px; bottom:4px; width:2px;
+    background:linear-gradient(to bottom, var(--accent-cyan), var(--accent-purple));
+  }
+  .tl-item { position:relative; padding:0 0 20px 20px; }
+  .tl-item:last-child { padding-bottom:0; }
+  .tl-dot {
+    position:absolute; left:-17px; top:2px; width:12px; height:12px; border-radius:50%;
+    border:2px solid;
+  }
+  .tl-dot--cyan { border-color:var(--accent-cyan); background:rgba(0,229,255,.2); }
+  .tl-dot--purple{ border-color:var(--accent-purple); background:rgba(168,85,247,.2); }
+  .tl-dot--gold { border-color:var(--accent-gold); background:rgba(245,158,11,.2); }
+  .tl-dot--green { border-color:var(--accent-green); background:rgba(16,185,129,.2); }
+  .tl-date { font-size:.7rem; color:var(--text-secondary); font-weight:500; }
+  .tl-title { font-size:.83rem; font-weight:600; margin-top:2px; }
+  .tl-desc { font-size:.72rem; color:var(--text-secondary); margin-top:2px; }
+
+  /* ── activity feed ────────────── */
+  .activity-list { display:flex; flex-direction:column; gap:14px; }
+  .act-item { display:flex; gap:12px; align-items:flex-start; }
+  .act-dot {
+    width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:6px;
+  }
+  .act-dot--cyan { background:var(--accent-cyan); box-shadow:0 0 8px var(--accent-cyan); }
+  .act-dot--purple{ background:var(--accent-purple); box-shadow:0 0 8px var(--accent-purple); }
+  .act-dot--gold{ background:var(--accent-gold); box-shadow:0 0 8px var(--accent-gold); }
+  .act-text { font-size:.8rem; line-height:1.5; }
+  .act-text strong { font-weight:600; }
+  .act-time { font-size:.68rem; color:var(--text-secondary); }
+
+  /* ── map placeholder ──────────── */
+  .city-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+  .city-dot {
+    background:rgba(255,255,255,.02); border:1px solid var(--border); border-radius:12px;
+    padding:12px; text-align:center; transition:all .2s; cursor:default;
+  }
+  .city-dot:hover { border-color:var(--accent-cyan); background:rgba(0,229,255,.03); }
+  .city-name { font-size:.78rem; font-weight:600; }
+  .city-count { font-size:.7rem; color:var(--text-secondary); margin-top:2px; }
+  .city-bar { height:3px; border-radius:3px; margin-top:8px; }
+  .city-bar--cyan { background:var(--accent-cyan); }
+  .city-bar--purple{ background:var(--accent-purple); }
+  .city-bar--gold{ background:var(--accent-gold); }
+  .city-bar--rose{ background:var(--accent-rose); }
+
+  /* ── responsive ───────────────── */
+  @media(max-width:1400px){ .stats-row{grid-template-columns:repeat(3,1fr)} .grid-2,.grid-2-alt{grid-template-columns:1fr} .grid-3{grid-template-columns:1fr 1fr} }
+  @media(max-width:900px){ .sidebar{display:none} .main{padding:20px 16px} .stats-row{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orb bg-orb--cyan"></div>
+<div class="bg-orb bg-orb--purple"></div>
+<div class="bg-orb bg-orb--gold"></div>
+
+<div class="app">
+  <!-- ── SIDEBAR ────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🏗️</div>
+      <div class="text">龙腾地产<small>Longteng Properties</small></div>
+    </div>
+    <a class="nav-item active">📊 项目总览</a>
+    <a class="nav-item">🗺️ 全国布局</a>
+    <a class="nav-item">📋 工程进度</a>
+    <a class="nav-item">💰 财务概览</a>
+    <a class="nav-item">👥 团队管理</a>
+    <a class="nav-item">📈 销售数据</a>
+    <a class="nav-item">⚙️ 系统设置</a>
+    <a class="nav-item">📝 审批中心 <span class="badge">12</span></a>
+  </aside>
+
+  <!-- ── MAIN ───────────────────── -->
+  <main class="main">
+    <!-- header -->
+    <div class="header">
+      <div>
+        <h1>项目进展 · <span>实时仪表盘</span></h1>
+        <div style="font-size:.78rem;color:var(--text-secondary);margin-top:4px;">数据更新于 2026-06-02 09:30 CST</div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-outline">📅 2026年 Q2</button>
+        <button class="btn btn-outline">📥 导出报表</button>
+        <button class="btn btn-primary">+ 新建项目</button>
+        <div class="avatar">张</div>
+      </div>
+    </div>
+
+    <!-- stats -->
+    <div class="stats-row">
+      <div class="stat-card stat-card--cyan">
+        <div class="stat-icon">🏗️</div>
+        <div>
+          <div class="stat-value">48</div>
+          <div class="stat-label">在建项目</div>
+          <div class="stat-change up">↑ 12% 同比</div>
+        </div>
+      </div>
+      <div class="stat-card stat-card--green">
+        <div class="stat-icon">✅</div>
+        <div>
+          <div class="stat-value">156</div>
+          <div class="stat-label">已交付项目</div>
+          <div class="stat-change up">↑ 8.3% 同比</div>
+        </div>
+      </div>
+      <div class="stat-card stat-card--purple">
+        <div class="stat-icon">📐</div>
+        <div>
+          <div class="stat-value">2,840<span style="font-size:.9rem;font-weight:500">万㎡</span></div>
+          <div class="stat-label">总建筑面积</div>
+          <div class="stat-change up">↑ 15.6% 同比</div>
+        </div>
+      </div>
+      <div class="stat-card stat-card--gold">
+        <div class="stat-icon">💰</div>
+        <div>
+          <div class="stat-value">¥ 1,286<span style="font-size:.9rem;font-weight:500">亿</span></div>
+          <div class="stat-label">总投资规模</div>
+          <div class="stat-change up">↑ 22.1% 同比</div>
+        </div>
+      </div>
+      <div class="stat-card stat-card--rose">
+        <div class="stat-icon">🏠</div>
+        <div>
+          <div class="stat-value">32,500<span style="font-size:.9rem;font-weight:500">套</span></div>
+          <div class="stat-label">年内计划交付</div>
+          <div class="stat-change down">↓ 3.2% 环比</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- row 1: chart + timeline -->
+    <div class="grid-2">
+      <!-- bar chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📊 各项目月度产值（亿元）</div>
+          <span class="card-badge card-badge--cyan">2026</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartBar"></canvas></div>
+      </div>
+
+      <!-- milestones timeline -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🚩 关键里程碑</div>
+          <span class="card-badge card-badge--purple">节点追踪</span>
+        </div>
+        <div class="timeline">
+          <div class="tl-item"><div class="tl-dot tl-dot--green"></div>
+            <div class="tl-date">2026-01-15</div><div class="tl-title">翡翠滨江 · 一期主体结构封顶</div>
+            <div class="tl-desc">提前 18 天完成，节省成本约 320 万元</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--cyan"></div>
+            <div class="tl-date">2026-02-28</div><div class="tl-title">云栖桃源 · 精装修全面进场</div>
+            <div class="tl-desc">8 栋楼同步施工，预计 Q3 交付</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--purple"></div>
+            <div class="tl-date">2026-03-20</div><div class="tl-title">星海湾 · 取得预售许可证</div>
+            <div class="tl-desc">首批 582 套房源入市，认筹率超 85%</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--gold"></div>
+            <div class="tl-date">2026-04-10</div><div class="tl-title">龙腾中心广场 · 招商完成 70%</div>
+            <div class="tl-desc">已签约主力商户 24 家，含 3 家世界 500 强</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--cyan"></div>
+            <div class="tl-date">2026-05-08</div><div class="tl-title">天璞府 · 桩基工程验收通过</div>
+            <div class="tl-desc">桩基优良率 99.2%，正式转入主体施工阶段</div></div>
+          <div class="tl-item"><div class="tl-dot tl-dot--purple"></div>
+            <div class="tl-date">2026-06-01</div><div class="tl-title">海棠湾 · BIM 全面上线</div>
+            <div class="tl-desc">数字化管控覆盖设计、施工、成本全链路</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- row 2: projects + doughnut -->
+    <div class="grid-2-alt">
+      <!-- project list -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">🏗️ 重点项目进展</div>
+          <span class="card-badge card-badge--cyan">48 个在建</span>
+        </div>
+        <div class="project-list" id="projectList"></div>
+      </div>
+
+      <!-- doughnut + cities -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📌 项目状态分布 & 城市分布</div>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <div class="chart-wrap" style="flex:1;max-width:48%;"><canvas id="chartDoughnut"></canvas></div>
+          <div style="flex:1;">
+            <div class="city-grid">
+              <div class="city-dot"><div class="city-name">上海</div><div class="city-count">12 个项目</div><div class="city-bar city-bar--cyan" style="width:90%"></div></div>
+              <div class="city-dot"><div class="city-name">北京</div><div class="city-count">8 个项目</div><div class="city-bar city-bar--purple" style="width:65%"></div></div>
+              <div class="city-dot"><div class="city-name">深圳</div><div class="city-count">7 个项目</div><div class="city-bar city-bar--gold" style="width:55%"></div></div>
+              <div class="city-dot"><div class="city-name">广州</div><div class="city-count">6 个项目</div><div class="city-bar city-bar--cyan" style="width:48%"></div></div>
+              <div class="city-dot"><div class="city-name">杭州</div><div class="city-count">5 个项目</div><div class="city-bar city-bar--purple" style="width:40%"></div></div>
+              <div class="city-dot"><div class="city-name">成都</div><div class="city-count">4 个项目</div><div class="city-bar city-bar--rose" style="width:32%"></div></div>
+              <div class="city-dot"><div class="city-name">南京</div><div class="city-count">3 个项目</div><div class="city-bar city-bar--gold" style="width:24%"></div></div>
+              <div class="city-dot"><div class="city-name">武汉</div><div class="city-count">2 个项目</div><div class="city-bar city-bar--cyan" style="width:16%"></div></div>
+              <div class="city-dot"><div class="city-name">重庆</div><div class="city-count">1 个项目</div><div class="city-bar city-bar--purple" style="width:8%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- row 3: activity + team -->
+    <div class="grid-3">
+      <!-- activity -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔔 近期动态</div></div>
+        <div class="activity-list" id="activityList"></div>
+      </div>
+
+      <!-- sales trend -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 季度销售趋势（亿元）</div>
+          <span class="card-badge card-badge--purple">环比 +18%</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+      </div>
+
+      <!-- team -->
+      <div class="card">
+        <div class="card-header"><div class="card-title">👥 核心团队</div></div>
+        <div id="teamList" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+// ── DATA ─────────────────────────
+const projects = [
+  { name:'翡翠滨江 · 一期', city:'上海', type:'住宅', progress:92, status:'ongoing', budget:'68亿', area:'42万㎡', color:'cyan' },
+  { name:'云栖桃源', city:'杭州', type:'住宅', progress:67, status:'ongoing', budget:'45亿', area:'28万㎡', color:'purple' },
+  { name:'星海湾', city:'深圳', type:'综合体', progress:45, status:'ongoing', budget:'120亿', area:'65万㎡', color:'gold' },
+  { name:'龙腾中心广场', city:'北京', type:'商业', progress:78, status:'ongoing', budget:'85亿', area:'38万㎡', color:'cyan' },
+  { name:'天璞府', city:'上海', type:'住宅', progress:28, status:'planning', budget:'52亿', area:'31万㎡', color:'purple' },
+  { name:'海棠湾度假区', city:'三亚', type:'文旅', progress:15, status:'planning', budget:'200亿', area:'120万㎡', color:'gold' },
+  { name:'世纪华庭', city:'广州', type:'住宅', progress:100, status:'complete', budget:'38亿', area:'22万㎡', color:'green' },
+  { name:'御景峰', city:'成都', type:'住宅', progress:55, status:'delayed', budget:'28亿', area:'18万㎡', color:'rose' },
+];
+
+const activities = [
+  { text:'<strong>张建国</strong> 提交了翡翠滨江项目 <strong>月度进度报告</strong>', time:'10 分钟前', color:'cyan' },
+  { text:'<strong>李敏</strong> 完成了云栖桃源 <strong>精装修样板间验收</strong>', time:'32 分钟前', color:'purple' },
+  { text:'<strong>王海龙</strong> 上传了海棠湾 <strong>BIM 模型 v2.3</strong>', time:'1 小时前', color:'cyan' },
+  { text:'<strong>系统</strong> 检测到御景峰项目 <strong>进度滞后 12 天</strong>，已触发预警', time:'2 小时前', color:'rose' },
+  { text:'<strong>陈雪</strong> 发起了星海湾 <strong>预售证申请流程</strong>', time:'3 小时前', color:'gold' },
+  { text:'<strong>龙腾中心</strong> 新签约 <strong>2 家主力商户</strong>，招商率达 72%', time:'5 小时前', color:'purple' },
+];
+
+const team = [
+  { name:'张建国', role:'集团工程副总裁', initials:'张', projects:12, color:'linear-gradient(135deg,#06b6d4,#00e5ff)' },
+  { name:'李敏', role:'精装修总监', initials:'李', projects:8, color:'linear-gradient(135deg,#7c3aed,#a855f7)' },
+  { name:'王海龙', role:'BIM 技术负责人', initials:'王', projects:6, color:'linear-gradient(135deg,#d97706,#f59e0b)' },
+  { name:'陈雪', role:'营销策划总监', initials:'陈', projects:10, color:'linear-gradient(135deg,#059669,#10b981)' },
+  { name:'赵伟', role:'成本合约部经理', initials:'赵', projects:15, color:'linear-gradient(135deg,#e11d48,#f43f5e)' },
+];
+
+// ── RENDER PROJECTS ──────────────
+const projectList = document.getElementById('projectList');
+projects.forEach(p => {
+  const el = document.createElement('div');
+  el.className = 'project-row';
+  const icons = {住宅:'🏠',综合体:'🏙️',商业:'🏬',文旅:'🏖️'};
+  const statusCn = {ongoing:'施工中',planning:'规划中',complete:'已竣工',delayed:'已延期'};
+  el.innerHTML = `
+    <div class="project-avatar" style="background:rgba(${p.color==='cyan'?'0,229,255':p.color==='purple'?'168,85,247':p.color==='gold'?'245,158,11':p.color==='green'?'16,185,129':'244,63,94'},.12);color:var(--accent-${p.color})">${icons[p.type]||'🏗️'}</div>
+    <div class="project-info">
+      <div class="project-name">${p.name}</div>
+      <div class="project-meta">${p.city} · ${p.type} · ${p.budget} · ${p.area}</div>
+    </div>
+    <div class="project-progress">
+      <div class="progress-bar"><div class="progress-fill progress-fill--${p.color}" style="width:${p.progress}%"></div></div>
+      <div class="progress-text" style="color:var(--accent-${p.color})">${p.progress}%</div>
+    </div>
+    <span class="project-status status-${p.status}">${statusCn[p.status]}</span>
+  `;
+  projectList.appendChild(el);
+});
+
+// ── RENDER ACTIVITIES ────────────
+const actList = document.getElementById('activityList');
+activities.forEach(a => {
+  const el = document.createElement('div');
+  el.className = 'act-item';
+  el.innerHTML = `<div class="act-dot act-dot--${a.color}"></div><div><div class="act-text">${a.text}</div><div class="act-time">${a.time}</div></div>`;
+  actList.appendChild(el);
+});
+
+// ── RENDER TEAM ──────────────────
+const teamList = document.getElementById('teamList');
+team.forEach(m => {
+  const el = document.createElement('div');
+  el.style.cssText = 'display:flex;align-items:center;gap:14px;padding:10px 12px;background:rgba(255,255,255,.015);border-radius:12px;';
+  el.innerHTML = `
+    <div style="width:40px;height:40px;border-radius:50%;background:${m.color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">${m.initials}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-weight:600;font-size:.85rem;">${m.name}</div>
+      <div style="font-size:.72rem;color:var(--text-secondary);">${m.role} · 负责 ${m.projects} 个项目</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:.82rem;font-weight:700;">${m.projects}</div>
+      <div style="font-size:.65rem;color:var(--text-secondary);">项目数</div>
+    </div>
+  `;
+  teamList.appendChild(el);
+});
+
+// ── CHART: Bar ───────────────────
+const ctxBar = document.getElementById('chartBar').getContext('2d');
+new Chart(ctxBar, {
+  type: 'bar',
+  data: {
+    labels: ['翡翠滨江','云栖桃源','星海湾','龙腾中心','天璞府','海棠湾','世纪华庭','御景峰'],
+    datasets: [{
+      label: '本月产值',
+      data: [8.2, 5.6, 4.8, 7.1, 2.3, 1.8, 0.2, 1.5],
+      backgroundColor: [
+        'rgba(0,229,255,.6)', 'rgba(168,85,247,.6)', 'rgba(245,158,11,.6)', 'rgba(0,229,255,.6)',
+        'rgba(168,85,247,.6)', 'rgba(245,158,11,.6)', 'rgba(16,185,129,.6)', 'rgba(244,63,94,.6)',
+      ],
+      borderColor: [
+        '#00e5ff','#a855f7','#f59e0b','#00e5ff','#a855f7','#f59e0b','#10b981','#f43f5e',
+      ],
+      borderWidth: 1,
+      borderRadius: 6,
+      borderSkipped: false,
+    },{
+      label: '上月产值',
+      data: [7.8, 5.1, 5.2, 6.6, 2.0, 1.5, 0.3, 1.8],
+      backgroundColor: 'rgba(255,255,255,.06)',
+      borderColor: 'rgba(255,255,255,.12)',
+      borderWidth: 1,
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 2.2,
+    plugins: { legend: { labels: { color:'#8b92a5', font:{size:11}, usePointStyle:true, pointStyleWidth:8 } } },
+    scales: {
+      x: { grid: { color:'rgba(255,255,255,.04)' }, ticks: { color:'#8b92a5', font:{size:10} } },
+      y: { grid: { color:'rgba(255,255,255,.04)' }, ticks: { color:'#8b92a5', font:{size:10}, callback:v=>v+'亿' } },
+    }
+  }
+});
+
+// ── CHART: Doughnut ──────────────
+const ctxDoughnut = document.getElementById('chartDoughnut').getContext('2d');
+new Chart(ctxDoughnut, {
+  type: 'doughnut',
+  data: {
+    labels: ['施工中','规划中','已竣工','已延期'],
+    datasets: [{
+      data: [28, 8, 9, 3],
+      backgroundColor: ['rgba(0,229,255,.7)','rgba(168,85,247,.7)','rgba(16,185,129,.7)','rgba(244,63,94,.7)'],
+      borderColor: ['#00e5ff','#a855f7','#10b981','#f43f5e'],
+      borderWidth: 2,
+      hoverBorderWidth: 3,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    plugins: { legend: { position:'bottom', labels:{ color:'#8b92a5', font:{size:11}, usePointStyle:true, padding:16 } } },
+  }
+});
+
+// ── CHART: Line ──────────────────
+const ctxLine = document.getElementById('chartLine').getContext('2d');
+const grad = ctxLine.createLinearGradient(0, 0, 0, 200);
+grad.addColorStop(0, 'rgba(0,229,255,.25)');
+grad.addColorStop(1, 'rgba(0,229,255,0)');
+new Chart(ctxLine, {
+  type: 'line',
+  data: {
+    labels: ['Q1','Q2','Q3','Q4'],
+    datasets: [{
+      label: '2025',
+      data: [86, 112, 140, 178],
+      borderColor: 'rgba(255,255,255,.2)',
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      borderDash: [6,4],
+      tension: .4,
+      pointBackgroundColor: 'rgba(255,255,255,.4)',
+    },{
+      label: '2026',
+      data: [102, 135, null, null],
+      borderColor: '#00e5ff',
+      backgroundColor: grad,
+      borderWidth: 2.5,
+      fill: true,
+      tension: .4,
+      pointBackgroundColor: '#00e5ff',
+      pointRadius: 5,
+      pointHoverRadius: 7,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 2.2,
+    plugins: { legend: { labels:{ color:'#8b92a5', font:{size:11}, usePointStyle:true } } },
+    scales: {
+      x: { grid: { color:'rgba(255,255,255,.04)' }, ticks: { color:'#8b92a5', font:{size:10} } },
+      y: { grid: { color:'rgba(255,255,255,.04)' }, ticks: { color:'#8b92a5', font:{size:10}, callback:v=>v+'亿' }, min:60 },
+    }
+  }
+});
+</script>
+</body>
+</html>

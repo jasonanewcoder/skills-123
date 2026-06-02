@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wanrun — Project Progress Dashboard</title>
+<style>
+  /* ========================================
+     Design System: Modern Enterprise Dark
+     Anti "AI slop": no purple gradients, no Inter font, no generic card grid
+     Inspired by: oikon48/cc-frontend-skills (Tech Noir + Editorial)
+     Skills applied via skills-123 Proxy Mode
+     ======================================== */
+
+  :root {
+    --bg-deep: #0a0c10;
+    --bg-surface: #13161d;
+    --bg-card: #1a1e28;
+    --bg-card-hover: #1f2431;
+    --border: #252a36;
+    --border-active: #3d4558;
+    --text-primary: #e4e6ed;
+    --text-secondary: #9298a8;
+    --text-muted: #5e6478;
+    --accent: #c9a45c;       /* gold — real estate warmth */
+    --accent-2: #5b8c5a;     /* sage green — progress */
+    --danger: #c85554;       /* muted red — delays */
+    --info: #5a8db5;         /* steel blue */
+    --font-display: "DM Serif Display", Georgia, serif;
+    --font-body: "IBM Plex Sans", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-shell {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: 64px 1fr;
+    grid-template-areas: "nav header" "nav main";
+    min-height: 100vh;
+  }
+
+  .header {
+    grid-area: header;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; position: sticky; top: 0; z-index: 10;
+    backdrop-filter: blur(12px);
+  }
+  .header-brand { display: flex; align-items: center; gap: 12px; }
+  .header-logo {
+    width: 34px; height: 34px; background: var(--accent);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 18px; font-weight: 700;
+    color: var(--bg-deep);
+  }
+  .header-title { font-family: var(--font-display); font-size: 18px; letter-spacing: -0.02em; }
+  .header-subtitle { font-size: 12px; color: var(--text-muted); }
+  .header-actions { display: flex; gap: 16px; }
+  .header-btn {
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-primary); padding: 8px 16px; border-radius: var(--radius);
+    font-size: 13px; cursor: pointer; transition: all 0.2s;
+  }
+  .header-btn:hover { background: var(--bg-card-hover); border-color: var(--border-active); }
+  .header-btn.primary { background: var(--accent); color: var(--bg-deep); border: none; font-weight: 600; }
+
+  .sidebar {
+    grid-area: nav; background: var(--bg-surface); border-right: 1px solid var(--border);
+    padding: 24px 16px; display: flex; flex-direction: column; gap: 4px;
+    position: sticky; top: 0; height: 100vh;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    border-radius: var(--radius); color: var(--text-secondary); font-size: 14px;
+    cursor: pointer; transition: all 0.15s; text-decoration: none;
+  }
+  .nav-item:hover { background: var(--bg-card); color: var(--text-primary); }
+  .nav-item.active { background: var(--bg-card); color: var(--accent); font-weight: 600; }
+  .nav-icon { width: 20px; text-align: center; font-size: 16px; }
+  .nav-section { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 20px 14px 8px; }
+  .nav-badge { margin-left: auto; background: var(--accent); color: var(--bg-deep); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+
+  .main {
+    grid-area: main; padding: 32px; display: flex; flex-direction: column;
+    gap: 28px; overflow-y: auto; max-height: calc(100vh - 64px);
+  }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .kpi-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 20px 24px; position: relative; overflow: hidden;
+  }
+  .kpi-card::after { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .kpi-card.total::after { background: var(--accent); }
+  .kpi-card.ongoing::after { background: var(--info); }
+  .kpi-card.completed::after { background: var(--accent-2); }
+  .kpi-card.delayed::after { background: var(--danger); }
+  .kpi-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .kpi-value { font-family: var(--font-display); font-size: 42px; line-height: 1; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .kpi-change { font-size: 13px; color: var(--text-secondary); }
+  .kpi-change.up { color: var(--accent-2); }
+  .kpi-change.down { color: var(--danger); }
+
+  .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
+  .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .panel-title { font-family: var(--font-display); font-size: 16px; letter-spacing: -0.01em; }
+  .panel-badge { font-size: 11px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border); color: var(--text-secondary); }
+
+  .bar-chart { display: flex; flex-direction: column; gap: 12px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-label { width: 120px; font-size: 13px; color: var(--text-secondary); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 28px; background: var(--bg-deep); border-radius: var(--radius-sm); position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: var(--radius-sm); display: flex; align-items: center; padding-left: 10px; font-size: 12px; font-weight: 600; color: #fff; }
+  .bar-fill.gold { background: linear-gradient(90deg, #c9a45c, #d4b87a); }
+  .bar-fill.sage { background: linear-gradient(90deg, #5b8c5a, #6fa86e); }
+  .bar-fill.steel { background: linear-gradient(90deg, #5a8db5, #74a3c8); }
+  .bar-fill.rust { background: linear-gradient(90deg, #c85554, #d4706f); }
+
+  .donut-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  .donut-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 12px 16px; border-bottom: 2px solid var(--border); font-weight: 600; }
+  tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+  tbody tr { transition: background 0.15s; }
+  tbody tr:hover { background: var(--bg-card-hover); }
+
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+  .status-chip.ongoing { background: rgba(90,141,181,0.15); color: var(--info); }
+  .status-chip.completed { background: rgba(91,140,90,0.15); color: var(--accent-2); }
+  .status-chip.delayed { background: rgba(200,85,84,0.15); color: var(--danger); }
+  .status-chip.planning { background: rgba(201,164,92,0.15); color: var(--accent); }
+
+  .progress-bar { width: 100px; height: 6px; background: var(--bg-deep); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; background: var(--accent-2); }
+  .text-mono { font-family: var(--font-mono); font-size: 13px; }
+  .text-sm { font-size: 13px; color: var(--text-secondary); }
+
+  .filter-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .search-input { background: var(--bg-deep); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 16px; border-radius: var(--radius); font-size: 14px; width: 260px; outline: none; transition: border-color 0.2s; }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text-muted); }
+  .filter-select { background: var(--bg-deep); border: 1px solid var(--border); color: var(--text-primary); padding: 10px 14px; border-radius: var(--radius); font-size: 13px; outline: none; cursor: pointer; }
+
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-item::before { content: ''; position: absolute; left: -24px; top: 6px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--accent); background: var(--bg-card); }
+  .tl-item.milestone::before { background: var(--accent); }
+  .tl-date { font-size: 12px; color: var(--text-muted); }
+  .tl-title { font-weight: 600; font-size: 14px; }
+  .tl-desc { font-size: 13px; color: var(--text-secondary); }
+
+  @media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+    .app-shell { grid-template-columns: 1fr; grid-template-areas: "header" "main"; }
+    .sidebar { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <nav class="sidebar">
+    <div style="font-family:var(--font-display);font-size:20px;padding:0 14px 24px;letter-spacing:-0.02em;">
+      CR<span style="color:var(--accent)">·</span>Land
+    </div>
+    <a class="nav-item active"><span class="nav-icon">📊</span> Overview</a>
+    <a class="nav-item"><span class="nav-icon">🏗️</span> Active Projects <span class="nav-badge">12</span></a>
+    <a class="nav-item"><span class="nav-icon">📋</span> All Projects</a>
+    <div class="nav-section">Analytics</div>
+    <a class="nav-item"><span class="nav-icon">📈</span> Progress Trends</a>
+    <a class="nav-item"><span class="nav-icon">💰</span> Budget Overview</a>
+    <a class="nav-item"><span class="nav-icon">⚠️</span> Risk Alerts <span class="nav-badge" style="background:var(--danger)">3</span></a>
+    <div class="nav-section">Management</div>
+    <a class="nav-item"><span class="nav-icon">👥</span> Team Assignments</a>
+    <a class="nav-item"><span class="nav-icon">📄</span> Export Reports</a>
+    <a class="nav-item"><span class="nav-icon">⚙️</span> Settings</a>
+  </nav>
+
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo">C</div>
+      <div>
+        <div class="header-title">Project Dashboard</div>
+        <div class="header-subtitle">Wanrun · East China Division · FY 2026</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" onclick="refreshData()">🔄 Refresh</button>
+      <button class="header-btn primary">+ New Project</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="kpi-grid">
+      <div class="kpi-card total"><div class="kpi-label">Total Projects</div><div class="kpi-value" style="color:var(--accent)">38</div><div class="kpi-change up">▲ 12% <span style="color:var(--text-muted)">YoY</span></div></div>
+      <div class="kpi-card ongoing"><div class="kpi-label">Under Construction</div><div class="kpi-value" style="color:var(--info)">12</div><div class="kpi-change">🏗️ 2.86M sqm total</div></div>
+      <div class="kpi-card completed"><div class="kpi-label">Completed</div><div class="kpi-value" style="color:var(--accent-2)">21</div><div class="kpi-change up">▲ 3 <span style="color:var(--text-muted)">this year</span></div></div>
+      <div class="kpi-card delayed"><div class="kpi-label">Delayed</div><div class="kpi-value" style="color:var(--danger)">3</div><div class="kpi-change down">⚠ Needs Attention</div></div>
+    </div>
+
+    <div class="chart-row">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Investment Completion by Type</span><span class="panel-badge">2026 Q2</span></div>
+        <div class="bar-chart">
+          <div class="bar-row"><span class="bar-label">Residential</span><div class="bar-track"><div class="bar-fill gold" style="width:87%">87%</div></div><span class="text-mono">¥ 12.48B</span></div>
+          <div class="bar-row"><span class="bar-label">Mixed-Use</span><div class="bar-track"><div class="bar-fill sage" style="width:64%">64%</div></div><span class="text-mono">¥ 8.93B</span></div>
+          <div class="bar-row"><span class="bar-label">Office</span><div class="bar-track"><div class="bar-fill steel" style="width:72%">72%</div></div><span class="text-mono">¥ 5.61B</span></div>
+          <div class="bar-row"><span class="bar-label">Hotel/Apt</span><div class="bar-track"><div class="bar-fill rust" style="width:41%">41%</div></div><span class="text-mono">¥ 3.27B</span></div>
+          <div class="bar-row"><span class="bar-label">Industrial</span><div class="bar-track"><div class="bar-fill gold" style="width:58%">58%</div></div><span class="text-mono">¥ 4.15B</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Phase Distribution</span><span class="panel-badge">38 Projects</span></div>
+        <div class="donut-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--bg-deep)" stroke-width="24"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--info)" stroke-width="24" stroke-dasharray="138.2 363.2" stroke-dashoffset="0" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent)" stroke-width="24" stroke-dasharray="87.3 363.2" stroke-dashoffset="-138.2" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent-2)" stroke-width="24" stroke-dasharray="65.4 363.2" stroke-dashoffset="-225.5" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="#6b7d8e" stroke-width="24" stroke-dasharray="54.4 363.2" stroke-dashoffset="-290.9" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--danger)" stroke-width="24" stroke-dasharray="18.0 363.2" stroke-dashoffset="-345.3" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <text x="80" y="76" text-anchor="middle" fill="var(--text-primary)" font-family="var(--font-display)" font-size="28" font-weight="700">38</text>
+            <text x="80" y="96" text-anchor="middle" fill="var(--text-muted)" font-size="11">Projects</text>
+          </svg>
+          <div class="donut-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--info)"></span> Structure 38%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> Fit-Out 24%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent-2)"></span> Planning 18%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#6b7d8e"></span> Done 15%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span> Excavation 5%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Active Projects</span>
+        <div class="filter-bar">
+          <input type="text" class="search-input" id="searchInput" placeholder="Search by name, city, type..." oninput="filterTable()">
+          <select class="filter-select" id="statusFilter" onchange="filterTable()">
+            <option value="all">All Status</option><option value="ongoing">🔄 Active</option><option value="completed">✅ Complete</option><option value="delayed">⚠️ Delayed</option><option value="planning">📋 Planning</option>
+          </select>
+          <select class="filter-select" id="typeFilter" onchange="filterTable()">
+            <option value="all">All Types</option><option value="Residential">🏠 Residential</option><option value="Mixed-Use">🏬 Mixed-Use</option><option value="Office">🏢 Office</option><option value="Hotel">🏨 Hotel/Apt</option><option value="Industrial">🏭 Industrial</option>
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>ID</th><th>Project Name</th><th>City</th><th>Type</th><th>Area</th><th>Investment</th><th>Progress</th><th>Status</th><th>Delivery</th><th>Manager</th></tr></thead><tbody id="projectTableBody"></tbody></table></div>
+      <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;">Showing <span id="visibleCount">12</span> / 38 projects</div>
+    </div>
+
+    <div class="chart-row">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Key Milestones</span><span class="panel-badge">2026 H1 — H2</span></div>
+        <div class="timeline">
+          <div class="tl-item milestone"><div class="tl-date">2026-01-15</div><div class="tl-title">Shanghai · Suhe Creek — Structure Topped Out</div><div class="tl-desc">Mixed-use 280K sqm | 15 days ahead of schedule</div></div>
+          <div class="tl-item"><div class="tl-date">2026-03-20</div><div class="tl-title">Hangzhou · Qianjiang Century City — Fit-Out Begins</div><div class="tl-desc">Residential 220K sqm · 8 towers | On schedule</div></div>
+          <div class="tl-item"><div class="tl-date">2026-04-10</div><div class="tl-title">Nanjing · Hexi CBD — Curtain Wall Complete</div><div class="tl-desc">Office 150K sqm · 56 floors</div></div>
+          <div class="tl-item"><div class="tl-date">2026-05-05</div><div class="tl-title">Suzhou · Industrial Park — Final Inspection Passed</div><div class="tl-desc">Industrial 450K sqm | ✅ Delivered</div></div>
+          <div class="tl-item milestone"><div class="tl-date">2026-06-30</div><div class="tl-title">Hefei · Lakeside Science City — Excavation</div><div class="tl-desc">Industrial 320K sqm · Phase I | ⚠️ 21 days behind</div></div>
+          <div class="tl-item"><div class="tl-date">2026-09-15</div><div class="tl-title">Ningbo · Eastern New Town — Structure at 50%</div><div class="tl-desc">Residential + Retail 350K sqm | On schedule</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">⚠️ Risk Alerts</span><span class="panel-badge" style="background:rgba(200,85,84,0.15);color:var(--danger);border-color:var(--danger)">Needs Review</span></div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)"><div style="font-weight:600;font-size:14px;">Hefei · Lakeside Science City</div><div style="font-size:13px;color:var(--text-secondary)">Excavation delayed 21 days — soil disposal impacted by environmental controls</div><div style="font-size:12px;color:var(--danger);margin-top:4px">Risk Level: 🟡 Medium</div></div>
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)"><div style="font-weight:600;font-size:14px;">Shanghai · North Bund Center</div><div style="font-size:13px;color:var(--text-secondary)">Curtain wall supplier capacity shortage — material arrival delayed 10 days</div><div style="font-size:12px;color:var(--danger);margin-top:4px">Risk Level: 🟡 Medium</div></div>
+          <div style="padding:14px;background:rgba(201,164,92,0.06);border-radius:var(--radius);border-left:3px solid var(--accent)"><div style="font-weight:600;font-size:14px;">Hangzhou · Cloud Valley Tech Park</div><div style="font-size:13px;color:var(--text-secondary)">Design revision under review — not expected to impact total timeline</div><div style="font-size:12px;color:var(--accent);margin-top:4px">Risk Level: 🟢 Low</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const projects = [
+  {id:"CR-2024-001",name:"Shanghai · Suhe Creek MixC",city:"Shanghai",type:"Mixed-Use",area:"280K sqm",invest:"¥ 6.23B",progress:95,status:"ongoing",delivery:"2026-Q2",manager:"Zhang Mingyuan"},
+  {id:"CR-2024-002",name:"Hangzhou · Qianjiang Century City",city:"Hangzhou",type:"Residential",area:"220K sqm",invest:"¥ 3.87B",progress:68,status:"ongoing",delivery:"2026-Q4",manager:"Li Sihan"},
+  {id:"CR-2024-003",name:"Nanjing · Hexi CBD Center",city:"Nanjing",type:"Office",area:"150K sqm",invest:"¥ 4.52B",progress:82,status:"ongoing",delivery:"2026-Q3",manager:"Wang Jianguo"},
+  {id:"CR-2024-004",name:"Suzhou · Industrial Smart Park",city:"Suzhou",type:"Industrial",area:"450K sqm",invest:"¥ 2.89B",progress:100,status:"completed",delivery:"2026-Q2",manager:"Chen Zhiyuan"},
+  {id:"CR-2024-005",name:"Hefei · Lakeside Science City I",city:"Hefei",type:"Industrial",area:"320K sqm",invest:"¥ 2.21B",progress:12,status:"delayed",delivery:"2027-Q2",manager:"Zhao Wei"},
+  {id:"CR-2024-006",name:"Ningbo · Eastern New Town",city:"Ningbo",type:"Residential",area:"350K sqm",invest:"¥ 4.16B",progress:51,status:"ongoing",delivery:"2027-Q1",manager:"Liu Fang"},
+  {id:"CR-2024-007",name:"Shanghai · North Bund Center",city:"Shanghai",type:"Office",area:"180K sqm",invest:"¥ 5.84B",progress:44,status:"delayed",delivery:"2027-Q1",manager:"Zhou Minghui"},
+  {id:"CR-2024-008",name:"Wuxi · Taihu New Town",city:"Wuxi",type:"Residential",area:"260K sqm",invest:"¥ 3.32B",progress:73,status:"ongoing",delivery:"2026-Q4",manager:"Huang Xiaoyan"},
+  {id:"CR-2024-009",name:"Hangzhou · Cloud Valley Tech Park",city:"Hangzhou",type:"Industrial",area:"380K sqm",invest:"¥ 3.15B",progress:39,status:"ongoing",delivery:"2027-Q3",manager:"Wu Gang"},
+  {id:"CR-2024-010",name:"Nanjing · Jiangbei Core Area",city:"Nanjing",type:"Mixed-Use",area:"420K sqm",invest:"¥ 7.61B",progress:27,status:"ongoing",delivery:"2028-Q1",manager:"Sun Lihua"},
+  {id:"CR-2025-001",name:"Wenzhou · Oujiang New Town",city:"Wenzhou",type:"Residential",area:"200K sqm",invest:"¥ 2.58B",progress:91,status:"ongoing",delivery:"2026-Q3",manager:"Zheng Hailong"},
+  {id:"CR-2025-002",name:"Shanghai · Qiantan International",city:"Shanghai",type:"Residential",area:"160K sqm",invest:"¥ 4.20B",progress:55,status:"ongoing",delivery:"2027-Q2",manager:"Lin Yawen"},
+];
+function renderTable(data) {
+  const tbody = document.getElementById('projectTableBody');
+  tbody.innerHTML = data.map(p => {
+    const labels = {ongoing:['ongoing','🔄 Active'],completed:['completed','✅ Complete'],delayed:['delayed','⚠️ Delayed'],planning:['planning','📋 Planning']};
+    const [sc, sl] = labels[p.status];
+    const pc = p.status === 'delayed' ? 'var(--danger)' : 'var(--accent-2)';
+    return `<tr><td class="text-mono">${p.id}</td><td><strong>${p.name}</strong></td><td>${p.city}</td><td>${p.type}</td><td class="text-mono">${p.area}</td><td class="text-mono">${p.invest}</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:${pc}"></div></div><span class="text-sm">${p.progress}%</span></div></td><td><span class="status-chip ${sc}">${sl}</span></td><td class="text-sm">${p.delivery}</td><td class="text-sm">${p.manager}</td></tr>`;
+  }).join('');
+}
+function filterTable() {
+  const s = document.getElementById('searchInput').value.toLowerCase();
+  const st = document.getElementById('statusFilter').value;
+  const tp = document.getElementById('typeFilter').value;
+  let f = projects;
+  if(s) f = f.filter(p => p.name.toLowerCase().includes(s)||p.city.toLowerCase().includes(s)||p.type.toLowerCase().includes(s)||p.id.toLowerCase().includes(s));
+  if(st!=='all') f = f.filter(p => p.status===st);
+  if(tp!=='all') f = f.filter(p => p.type===tp);
+  renderTable(f); document.getElementById('visibleCount').textContent = f.length;
+}
+function refreshData(){ const b = document.querySelector('.header-btn'); b.textContent = '⏳ Refreshing...'; setTimeout(()=>{ b.textContent = '🔄 Refresh'; filterTable(); }, 600); }
+renderTable(projects); document.getElementById('visibleCount').textContent = projects.length;
+</script>
+</body>
+</html>

@@ -1,0 +1,1 @@
+Build me a sleek, professional dashboard webpage for a large real estate company's project progress tracking. Use any sample data — show KPIs, project timelines, status breakdowns, and risk alerts. Make it look like a real enterprise tool, not a generic template.

@@ -1,5 +1,7 @@
 # skills-123
 
+<h3 align="center"><em>The Skill Proxy — Sin instalar. Usar directamente.</em></h3>
+
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/dependencias-cero-brightgreen.svg" alt="Dependencias: Cero">
@@ -12,87 +14,85 @@
 </p>
 
 <p align="center">
-  <strong>El asesor de habilidades en conversación para agentes de codificación IA.</strong><br>
-  Descubre, evalúa e instala automáticamente las mejores habilidades comunitarias de GitHub —<br>
-  para que nunca más tengas que preconfigurar habilidades.
+  <strong>Pides construir algo. skills-123 busca skills comunitarias en GitHub,<br>
+  lee su conocimiento y lo inyecta en contexto — mejor resultado, sin instalar nada.</strong><br>
+  <sup>Chino · English · 日本語 · 한국어 · Español — intención, no palabras clave.</sup>
 </p>
 
 <p align="center">
-  🌐 Leer en otros idiomas: <a href="README.md">English</a> | <a href="README.zh.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a>
+  🌐 <a href="README.md">English</a> | <a href="README.zh.md">简体中文</a> | <a href="README.ja.md">日本語</a> | <a href="README.ko.md">한국어</a>
 </p>
 
 ---
 
-## ✨ Qué hace
+## ✨ En 30 segundos
+
+skills-123 es un **meta-skill** — una skill que usa otras skills.
 
 ```
-Tú: "¿Cómo configuro backups de PostgreSQL a S3?"
+Tú: "Construye un panel de control para proyectos inmobiliarios"
           │
           ▼
-┌─────────────────────────────────┐
-│  🔍 skills-123-suggest          │  Explorador pasivo
-│  "Hay habilidades comunitarias   │  Búsqueda rápida → sugerencia
-│   en GitHub. ¿Busco la mejor?"   │
-└──────────────┬──────────────────┘
-               │  Tú: "¡Sí!"
-               ▼
-┌─────────────────────────────────┐
-│  🧠 skills-123（5 fases）        │  Motor activo
-│  🔎 Buscar → 📊 Evaluar          │
-│  → 📋 Presentar → 📦 Instalar    │
-│  → ✅ Verificar                  │
-└──────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
+│  🤖 skills-123 — El Skill Proxy                      │
+│                                                      │
+│  🔎 DESCUBRIR   Buscar skills relevantes en GitHub   │
+│  📖 LEER        Leer el SKILL.md de las mejores      │
+│  💉 INYECTAR    Extraer patrones y mejores prácticas  │
+│  ✅ ENTREGAR    Completar la tarea con más calidad    │
+└─────────────────────────────────────────────────────┘
+          │
+          ▼
+Un dashboard profesional y distintivo — no IA genérica.
+(Opcional: "¿Instalar esta skill para el futuro?")
 ```
+
+---
+
+## 🎯 ¿Por qué "Skill Proxy"?
+
+| Modelo tradicional | skills-123 |
+|---|---|
+| Buscas → evalúas → instalas → usas | Pides → skills-123 proxy del conocimiento |
+| Skills ocupan disco, se cargan siempre | Solo fragmentos relevantes, bajo demanda |
+| Debes saber qué skills existen | Descubrimiento automático |
+| Solo palabras clave en inglés | 5 idiomas, por **intención de tarea** |
+
+---
+
+## 📂 Comparación
+
+| Prompt | Sin skills-123 | Con skills-123 |
+|--------|:---:|:---:|
+| [`example/es/prompt.md`](example/es/prompt.md) | [![Sin](example/screenshots/es-without.png)](example/es/output-without-skill.html) | [![Con](example/screenshots/es-with.png)](example/es/output-with-skill.html) |
+| *"Construye un panel inmobiliario"* | Degradado púrpura · Inter · Chart.js CDN | Dorado · Layout empresarial · Gráficos CSS |
+
+> Otros idiomas: [English](example/en/output-with-skill.html) · [简体中文](example/zh/output-with-skill.html) · [日本語](example/ja/output-with-skill.html) · [한국어](example/ko/output-with-skill.html)
 
 ---
 
 ## 🚀 Instalación
 
 ```bash
+curl -sL https://raw.githubusercontent.com/jasonanewcoder/skills-123/main/install.sh | bash
+# O manual
 git clone https://github.com/jasonanewcoder/skills-123.git
-cd skills-123
-bash install.sh
+cd skills-123 && bash install.sh
 ```
 
-Reinicia Claude Code. Dos nuevas habilidades estarán disponibles: `skills-123` y `skills-123-suggest`.
+Reinicia Claude Code. Dos skills: `skills-123` (proxy) y `skills-123-suggest` (explorador).
 
-### Instalar en otros agentes
-
-| Agent | Guía |
-|-------|------|
-| **OpenAI Codex** | [codex.md](docs/codex.md) |
-| **Cursor** | [cursor.md](docs/cursor.md) |
-| **VSCode / Copilot** | [vscode.md](docs/vscode.md) |
-| **Coze (扣子)** | [coze.md](docs/coze.md) |
-| **Windsurf** | [windsurf.md](docs/windsurf.md) |
-| **Gemini CLI** | [gemini-cli.md](docs/gemini-cli.md) |
-| **OpenCode** | [opencode.md](docs/opencode.md) |
-| **Aider** | [aider.md](docs/aider.md) |
+| Agent | Guía | |
+|-------|------|:---:|
+| **Claude Code** | *(integrado)* | ✅ |
+| **OpenAI Codex** | [codex.md](docs/codex.md) | ✅ |
+| **Cursor** | [cursor.md](docs/cursor.md) | ⚠️ |
+| **Coze (扣子)** | [coze.md](docs/coze.md) | ✅ |
 
 ---
 
-## 💬 Uso
+## 🛡️ Seguridad · 📄 Licencia
 
-```
-"Encuéntrame habilidades para desplegar Kubernetes"
-"¿Hay buenas habilidades para backups de PostgreSQL?"
-"Busca habilidades para pipelines CI/CD"
-```
+Puntuación 5D (comunidad·actualidad·autor·relevancia·seguridad). 22 patrones críticos rechazados.
 
----
-
-## 🛡️ Puntuación & Seguridad
-
-| Dimensión | Peso | Criterio |
-|-----------|:----:|----------|
-| **Comunidad** | 0-15 | Estrellas (escala logarítmica) |
-| **Actualidad** | 0-10 | ≤3 meses=10, ≤6m=7, ≤1a=4 |
-| **Confianza** | 0-15 | Org verificada +5, publicador conocido +5 |
-| **Relevancia** | 0-30 | Coincidencia de palabras clave × 30 |
-| **Seguridad** | 0-20 | Limpio=20, avisos=10, **crítico=rechazo automático** |
-
----
-
-## 👥 Autores / 📄 Licencia
-
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — ver [LICENSE](LICENSE)
+**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

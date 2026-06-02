@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wanrun — 프로젝트 진행 대시보드</title>
+<style>
+  :root {
+    --bg-deep: #0a0c10; --bg-surface: #13161d; --bg-card: #1a1e28; --bg-card-hover: #1f2431;
+    --border: #252a36; --border-active: #3d4558;
+    --text-primary: #e4e6ed; --text-secondary: #9298a8; --text-muted: #5e6478;
+    --accent: #c9a45c; --accent-2: #5b8c5a; --danger: #c85554; --info: #5a8db5;
+    --font-display: "DM Serif Display", "Noto Serif KR", Georgia, serif;
+    --font-body: "IBM Plex Sans", "Noto Sans KR", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", monospace;
+    --radius-sm: 4px; --radius: 8px; --radius-lg: 16px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg-deep); color:var(--text-primary); font-family:var(--font-body); line-height:1.6; -webkit-font-smoothing:antialiased; }
+  .app-shell { display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; grid-template-areas:"nav header" "nav main"; min-height:100vh; }
+  .header { grid-area:header; background:var(--bg-surface); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 32px; position:sticky; top:0; z-index:10; backdrop-filter:blur(12px); }
+  .header-brand { display:flex; align-items:center; gap:12px; }
+  .header-logo { width:34px; height:34px; background:var(--accent); border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:18px; font-weight:700; color:var(--bg-deep); }
+  .header-title { font-family:var(--font-display); font-size:18px; letter-spacing:-0.02em; }
+  .header-subtitle { font-size:12px; color:var(--text-muted); }
+  .header-actions { display:flex; gap:16px; }
+  .header-btn { background:var(--bg-card); border:1px solid var(--border); color:var(--text-primary); padding:8px 16px; border-radius:var(--radius); font-size:13px; cursor:pointer; transition:all 0.2s; }
+  .header-btn:hover { background:var(--bg-card-hover); border-color:var(--border-active); }
+  .header-btn.primary { background:var(--accent); color:var(--bg-deep); border:none; font-weight:600; }
+  .sidebar { grid-area:nav; background:var(--bg-surface); border-right:1px solid var(--border); padding:24px 16px; display:flex; flex-direction:column; gap:4px; position:sticky; top:0; height:100vh; }
+  .nav-item { display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius); color:var(--text-secondary); font-size:14px; cursor:pointer; transition:all 0.15s; text-decoration:none; }
+  .nav-item:hover { background:var(--bg-card); color:var(--text-primary); }
+  .nav-item.active { background:var(--bg-card); color:var(--accent); font-weight:600; }
+  .nav-section { font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); padding:20px 14px 8px; }
+  .nav-badge { margin-left:auto; background:var(--accent); color:var(--bg-deep); font-size:11px; font-weight:700; padding:2px 8px; border-radius:99px; }
+  .main { grid-area:main; padding:32px; display:flex; flex-direction:column; gap:28px; overflow-y:auto; max-height:calc(100vh - 64px); }
+  .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+  .kpi-card { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:20px 24px; position:relative; overflow:hidden; }
+  .kpi-card::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .kpi-card.total::after { background:var(--accent); } .kpi-card.ongoing::after { background:var(--info); }
+  .kpi-card.completed::after { background:var(--accent-2); } .kpi-card.delayed::after { background:var(--danger); }
+  .kpi-label { font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:6px; }
+  .kpi-value { font-family:var(--font-display); font-size:42px; line-height:1; letter-spacing:-0.02em; margin-bottom:4px; }
+  .kpi-change { font-size:13px; color:var(--text-secondary); } .kpi-change.up { color:var(--accent-2); } .kpi-change.down { color:var(--danger); }
+  .chart-row { display:grid; grid-template-columns:2fr 1fr; gap:16px; }
+  .panel { background:var(--bg-card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:24px; }
+  .panel-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+  .panel-title { font-family:var(--font-display); font-size:16px; letter-spacing:-0.01em; }
+  .panel-badge { font-size:11px; padding:4px 12px; border-radius:99px; border:1px solid var(--border); color:var(--text-secondary); }
+  .bar-chart { display:flex; flex-direction:column; gap:12px; }
+  .bar-row { display:flex; align-items:center; gap:12px; }
+  .bar-label { width:130px; font-size:13px; color:var(--text-secondary); text-align:right; flex-shrink:0; }
+  .bar-track { flex:1; height:28px; background:var(--bg-deep); border-radius:var(--radius-sm); position:relative; overflow:hidden; }
+  .bar-fill { height:100%; border-radius:var(--radius-sm); display:flex; align-items:center; padding-left:10px; font-size:12px; font-weight:600; color:#fff; }
+  .bar-fill.gold { background:linear-gradient(90deg,#c9a45c,#d4b87a); } .bar-fill.sage { background:linear-gradient(90deg,#5b8c5a,#6fa86e); }
+  .bar-fill.steel { background:linear-gradient(90deg,#5a8db5,#74a3c8); } .bar-fill.rust { background:linear-gradient(90deg,#c85554,#d4706f); }
+  .donut-wrap { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .donut-legend { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); }
+  .legend-dot { width:10px; height:10px; border-radius:50%; }
+  .status-chip { display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:99px; font-size:12px; font-weight:600; }
+  .status-chip.ongoing { background:rgba(90,141,181,0.15); color:var(--info); }
+  .status-chip.completed { background:rgba(91,140,90,0.15); color:var(--accent-2); }
+  .status-chip.delayed { background:rgba(200,85,84,0.15); color:var(--danger); }
+  .status-chip.planning { background:rgba(201,164,92,0.15); color:var(--accent); }
+  .progress-bar { width:100px; height:6px; background:var(--bg-deep); border-radius:99px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:99px; background:var(--accent-2); }
+  .text-mono { font-family:var(--font-mono); font-size:13px; } .text-sm { font-size:13px; color:var(--text-secondary); }
+  .filter-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .search-input { background:var(--bg-deep); border:1px solid var(--border); color:var(--text-primary); padding:10px 16px; border-radius:var(--radius); font-size:14px; width:260px; outline:none; }
+  .search-input:focus { border-color:var(--accent); } .search-input::placeholder { color:var(--text-muted); }
+  .filter-select { background:var(--bg-deep); border:1px solid var(--border); color:var(--text-primary); padding:10px 14px; border-radius:var(--radius); font-size:13px; outline:none; cursor:pointer; }
+  .timeline { position:relative; padding-left:28px; }
+  .timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--border); }
+  .tl-item { position:relative; margin-bottom:20px; }
+  .tl-item::before { content:''; position:absolute; left:-24px; top:6px; width:12px; height:12px; border-radius:50%; border:2px solid var(--accent); background:var(--bg-card); }
+  .tl-item.milestone::before { background:var(--accent); }
+  .tl-date { font-size:12px; color:var(--text-muted); } .tl-title { font-weight:600; font-size:14px; } .tl-desc { font-size:13px; color:var(--text-secondary); }
+  @media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.chart-row{grid-template-columns:1fr}.app-shell{grid-template-columns:1fr;grid-template-areas:"header""main"}.sidebar{display:none}}
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <nav class="sidebar">
+    <div style="font-family:var(--font-display);font-size:20px;padding:0 14px 24px;">CR<span style="color:var(--accent)">·</span>Land</div>
+    <a class="nav-item active"><span class="nav-icon">📊</span> 개요</a>
+    <a class="nav-item"><span class="nav-icon">🏗️</span> 진행 중 <span class="nav-badge">12</span></a>
+    <a class="nav-item"><span class="nav-icon">📋</span> 전체 프로젝트</a>
+    <div class="nav-section">분석</div>
+    <a class="nav-item"><span class="nav-icon">📈</span> 진행 추세</a>
+    <a class="nav-item"><span class="nav-icon">💰</span> 예산 개요</a>
+    <a class="nav-item"><span class="nav-icon">⚠️</span> 위험 경고 <span class="nav-badge" style="background:var(--danger)">3</span></a>
+    <div class="nav-section">관리</div>
+    <a class="nav-item"><span class="nav-icon">👥</span> 팀 할당</a>
+    <a class="nav-item"><span class="nav-icon">📄</span> 보고서 내보내기</a>
+    <a class="nav-item"><span class="nav-icon">⚙️</span> 설정</a>
+  </nav>
+  <header class="header">
+    <div class="header-brand"><div class="header-logo">C</div><div><div class="header-title">프로젝트 대시보드</div><div class="header-subtitle">Wanrun · 화둥지역본부 · 2026년</div></div></div>
+    <div class="header-actions"><button class="header-btn" onclick="refreshData()">🔄 새로고침</button><button class="header-btn primary">+ 새 프로젝트</button></div>
+  </header>
+  <main class="main">
+    <div class="kpi-grid">
+      <div class="kpi-card total"><div class="kpi-label">총 프로젝트</div><div class="kpi-value" style="color:var(--accent)">38</div><div class="kpi-change up">▲ 12% <span style="color:var(--text-muted)">전년 대비</span></div></div>
+      <div class="kpi-card ongoing"><div class="kpi-label">시공 중</div><div class="kpi-value" style="color:var(--info)">12</div><div class="kpi-change">🏗️ 총면적 286만㎡</div></div>
+      <div class="kpi-card completed"><div class="kpi-label">준공 완료</div><div class="kpi-value" style="color:var(--accent-2)">21</div><div class="kpi-change up">▲ 3 <span style="color:var(--text-muted)">올해</span></div></div>
+      <div class="kpi-card delayed"><div class="kpi-label">지연</div><div class="kpi-value" style="color:var(--danger)">3</div><div class="kpi-change down">⚠ 주의 필요</div></div>
+    </div>
+    <div class="chart-row">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">유형별 투자 완료율</span><span class="panel-badge">2026 Q2</span></div>
+        <div class="bar-chart">
+          <div class="bar-row"><span class="bar-label">주택</span><div class="bar-track"><div class="bar-fill gold" style="width:87%">87%</div></div><span class="text-mono">¥ 124.8억</span></div>
+          <div class="bar-row"><span class="bar-label">복합상업</span><div class="bar-track"><div class="bar-fill sage" style="width:64%">64%</div></div><span class="text-mono">¥ 89.3억</span></div>
+          <div class="bar-row"><span class="bar-label">오피스</span><div class="bar-track"><div class="bar-fill steel" style="width:72%">72%</div></div><span class="text-mono">¥ 56.1억</span></div>
+          <div class="bar-row"><span class="bar-label">호텔</span><div class="bar-track"><div class="bar-fill rust" style="width:41%">41%</div></div><span class="text-mono">¥ 32.7억</span></div>
+          <div class="bar-row"><span class="bar-label">산업단지</span><div class="bar-track"><div class="bar-fill gold" style="width:58%">58%</div></div><span class="text-mono">¥ 41.5억</span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">단계별 분포</span><span class="panel-badge">38 프로젝트</span></div>
+        <div class="donut-wrap">
+          <svg width="160" height="160" viewBox="0 0 160 160">
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--bg-deep)" stroke-width="24"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--info)" stroke-width="24" stroke-dasharray="138.2 363.2" stroke-dashoffset="0" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent)" stroke-width="24" stroke-dasharray="87.3 363.2" stroke-dashoffset="-138.2" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--accent-2)" stroke-width="24" stroke-dasharray="65.4 363.2" stroke-dashoffset="-225.5" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="#6b7d8e" stroke-width="24" stroke-dasharray="54.4 363.2" stroke-dashoffset="-290.9" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <circle cx="80" cy="80" r="58" fill="none" stroke="var(--danger)" stroke-width="24" stroke-dasharray="18.0 363.2" stroke-dashoffset="-345.3" transform="rotate(-90 80 80)" stroke-linecap="round"/>
+            <text x="80" y="76" text-anchor="middle" fill="var(--text-primary)" font-family="var(--font-display)" font-size="28" font-weight="700">38</text>
+            <text x="80" y="96" text-anchor="middle" fill="var(--text-muted)" font-size="11">프로젝트</text>
+          </svg>
+          <div class="donut-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--info)"></span> 구조 공사 38%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent)"></span> 내장 공사 24%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--accent-2)"></span> 기획 단계 18%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:#6b7d8e"></span> 준공 15%</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--danger)"></span> 기초 공사 5%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">주요 진행 프로젝트</span>
+        <div class="filter-bar">
+          <input type="text" class="search-input" id="searchInput" placeholder="이름, 도시, 유형 검색..." oninput="filterTable()">
+          <select class="filter-select" id="statusFilter" onchange="filterTable()"><option value="all">전체 상태</option><option value="ongoing">🔄 진행 중</option><option value="completed">✅ 완료</option><option value="delayed">⚠️ 지연</option><option value="planning">📋 계획 중</option></select>
+          <select class="filter-select" id="typeFilter" onchange="filterTable()"><option value="all">전체 유형</option><option value="주택">🏠 주택</option><option value="복합상업">🏬 복합상업</option><option value="오피스">🏢 오피스</option><option value="호텔">🏨 호텔</option><option value="산업단지">🏭 산업단지</option></select>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr><th>번호</th><th>프로젝트명</th><th>도시</th><th>유형</th><th>면적</th><th>총투자</th><th>진행률</th><th>상태</th><th>준공 예정</th><th>책임자</th></tr></thead><tbody id="projectTableBody"></tbody></table></div>
+      <div style="padding:16px;text-align:center;color:var(--text-muted);font-size:13px;"><span id="visibleCount">12</span> / 38 개 표시 중</div>
+    </div>
+    <div class="chart-row">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">주요 마일스톤</span><span class="panel-badge">2026 상반기 — 하반기</span></div>
+        <div class="timeline">
+          <div class="tl-item milestone"><div class="tl-date">2026-01-15</div><div class="tl-title">상하이·쑤허완 — 구조체 완료</div><div class="tl-desc">복합상업 28만㎡ | 예정보다 15일 단축</div></div>
+          <div class="tl-item"><div class="tl-date">2026-03-20</div><div class="tl-title">항저우·첸장세기성 — 내장 공사 착수</div><div class="tl-desc">주택 22만㎡ · 8개동 | 계획대로</div></div>
+          <div class="tl-item"><div class="tl-date">2026-04-10</div><div class="tl-title">난징·허시CBD — 커튼월 완료</div><div class="tl-desc">오피스 15만㎡ · 56층</div></div>
+          <div class="tl-item"><div class="tl-date">2026-05-05</div><div class="tl-title">쑤저우·공업원구 — 준공 검사 합격</div><div class="tl-desc">산업단지 45만㎡ | ✅ 인도 완료</div></div>
+          <div class="tl-item milestone"><div class="tl-date">2026-06-30</div><div class="tl-title">허페이·빈후과학성 — 기초 굴착 중</div><div class="tl-desc">산업단지 32만㎡ · 1기 | ⚠️ 21일 지연</div></div>
+          <div class="tl-item"><div class="tl-date">2026-09-15</div><div class="tl-title">닝보·동부신도시 — 구조 50% 완료</div><div class="tl-desc">주택+상업 35만㎡ | 계획대로</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">⚠️ 위험 경고</span><span class="panel-badge" style="background:rgba(200,85,84,0.15);color:var(--danger);border-color:var(--danger)">검토 필요</span></div>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)"><div style="font-weight:600;font-size:14px;">허페이·빈후과학성</div><div style="font-size:13px;color:var(--text-secondary)">기초 굴착 21일 지연 — 환경 규제로 인한 토사 반출 제한</div><div style="font-size:12px;color:var(--danger);margin-top:4px">위험도: 🟡 중간</div></div>
+          <div style="padding:14px;background:rgba(200,85,84,0.06);border-radius:var(--radius);border-left:3px solid var(--danger)"><div style="font-weight:600;font-size:14px;">상하이·북외탄센터</div><div style="font-size:13px;color:var(--text-secondary)">커튼월 공급업체 생산 능력 부족 — 자재 도착 10일 지연</div><div style="font-size:12px;color:var(--danger);margin-top:4px">위험도: 🟡 중간</div></div>
+          <div style="padding:14px;background:rgba(201,164,92,0.06);border-radius:var(--radius);border-left:3px solid var(--accent)"><div style="font-weight:600;font-size:14px;">항저우·윈밸리테크파크</div><div style="font-size:13px;color:var(--text-secondary)">설계 변경 검토 중 — 전체 일정 영향 없음</div><div style="font-size:12px;color:var(--accent);margin-top:4px">위험도: 🟢 낮음</div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script>
+const projects=[{id:"CR-001",name:"상하이·쑤허완완샹톈디",city:"상하이",type:"복합상업",area:"28만㎡",invest:"¥ 62.3억",progress:95,status:"ongoing",delivery:"2026-Q2",manager:"장밍위안"},{id:"CR-002",name:"항저우·첸장세기성",city:"항저우",type:"주택",area:"22만㎡",invest:"¥ 38.7억",progress:68,status:"ongoing",delivery:"2026-Q4",manager:"리쓰한"},{id:"CR-003",name:"난징·허시CBD",city:"난징",type:"오피스",area:"15만㎡",invest:"¥ 45.2억",progress:82,status:"ongoing",delivery:"2026-Q3",manager:"왕젠궈"},{id:"CR-004",name:"쑤저우·공업원구즈구",city:"쑤저우",type:"산업단지",area:"45만㎡",invest:"¥ 28.9억",progress:100,status:"completed",delivery:"2026-Q2",manager:"천즈위안"},{id:"CR-005",name:"허페이·빈후과학성I기",city:"허페이",type:"산업단지",area:"32만㎡",invest:"¥ 22.1억",progress:12,status:"delayed",delivery:"2027-Q2",manager:"자오웨이"},{id:"CR-006",name:"닝보·동부신도시",city:"닝보",type:"주택",area:"35만㎡",invest:"¥ 41.6억",progress:51,status:"ongoing",delivery:"2027-Q1",manager:"류팡"}];
+function renderTable(d){const t=document.getElementById('projectTableBody');const lb={ongoing:['ongoing','🔄 진행 중'],completed:['completed','✅ 완료'],delayed:['delayed','⚠️ 지연'],planning:['planning','📋 계획 중']};t.innerHTML=d.map(p=>{const[s,l]=lb[p.status];const pc=p.status==='delayed'?'var(--danger)':'var(--accent-2)';return `<tr><td class="text-mono">${p.id}</td><td><strong>${p.name}</strong></td><td>${p.city}</td><td>${p.type}</td><td class="text-mono">${p.area}</td><td class="text-mono">${p.invest}</td><td><div style="display:flex;align-items:center;gap:8px;"><div class="progress-bar"><div class="progress-fill" style="width:${p.progress}%;background:${pc}"></div></div><span class="text-sm">${p.progress}%</span></div></td><td><span class="status-chip ${s}">${l}</span></td><td class="text-sm">${p.delivery}</td><td class="text-sm">${p.manager}</td></tr>`}).join('');}
+function filterTable(){const s=document.getElementById('searchInput').value.toLowerCase();const st=document.getElementById('statusFilter').value;const tp=document.getElementById('typeFilter').value;let f=projects;if(s)f=f.filter(p=>p.name.includes(s)||p.city.includes(s)||p.type.includes(s)||p.id.toLowerCase().includes(s));if(st!=='all')f=f.filter(p=>p.status===st);if(tp!=='all')f=f.filter(p=>p.type===tp);renderTable(f);document.getElementById('visibleCount').textContent=f.length;}
+function refreshData(){const b=document.querySelector('.header-btn');b.textContent='⏳ 새로고침 중...';setTimeout(()=>{b.textContent='🔄 새로고침';filterTable();},600);}
+renderTable(projects);document.getElementById('visibleCount').textContent=projects.length;
+</script>
+</body>
+</html>
