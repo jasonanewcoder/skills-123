@@ -59,10 +59,28 @@ readonly BUILTIN_MIRRORS=(
     "api|ghproxy.com/https://api.github.com"
 )
 
+# ── Python detection ──────────────────────────────────────────────────────
+# On Windows (Git Bash) and some Linux distros, python3 may be "python".
+# Detect the available interpreter once and use it everywhere.
+PYTHON=""
+if command -v python3 &>/dev/null; then
+    PYTHON="python3"
+elif command -v python &>/dev/null; then
+    # Verify it's Python 3, not Python 2
+    if python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" 2>/dev/null; then
+        PYTHON="python"
+    fi
+fi
+
+if [ -z "$PYTHON" ]; then
+    echo '{"ok":false,"error":"python3/python not found in PATH — required by fetch-local.sh"}' >&2
+    exit 1
+fi
+
 # ── Helpers ─────────────────────────────────────────────────────────────────
 json_ok() {
     local content="$1"
-    content=$(echo "$content" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')
+    content=$(echo "$content" | "$PYTHON" -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')
     printf '{"ok":true,"content":%s}\n' "$content"
 }
 
@@ -74,7 +92,7 @@ json_ok_raw() {
 
 json_err() {
     local msg="$1"
-    msg=$(echo "$msg" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')
+    msg=$(echo "$msg" | "$PYTHON" -c "import sys,json; print(json.dumps(sys.stdin.read()))" 2>/dev/null || echo '""')
     printf '{"ok":false,"error":%s}\n' "$msg"
 }
 
@@ -189,7 +207,7 @@ is_error_page() {
     local body="$1"
     echo "$body" | grep -qi "404: Not Found\|400: Invalid\|not found\|rate limit exceeded" && return 0
     # GitHub API error messages
-    echo "$body" | python3 -c "
+    echo "$body" | "$PYTHON" -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -251,7 +269,7 @@ fetch_api() {
 
     # Check for API-level errors
     local err_msg
-    err_msg=$(echo "$body" | python3 -c "
+    err_msg=$(echo "$body" | "$PYTHON" -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
@@ -267,7 +285,7 @@ except: pass
 
     # Decode base64 content
     local content
-    content=$(echo "$body" | python3 -c "
+    content=$(echo "$body" | "$PYTHON" -c "
 import sys, json, base64
 data = json.load(sys.stdin)
 if isinstance(data, dict) and 'content' in data:
@@ -319,7 +337,7 @@ fetch_skill() {
     tree_body=$(fetch_url_mirrored "$tree_url" "api") || true
     if [ -n "$tree_body" ]; then
         local skill_path
-        skill_path=$(echo "$tree_body" | python3 -c "
+        skill_path=$(echo "$tree_body" | "$PYTHON" -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -345,7 +363,7 @@ fetch_search() {
     local page="${2:-1}"
 
     local query
-    query=$(echo "$keywords" | python3 -c "
+    query=$(echo "$keywords" | "$PYTHON" -c "
 import sys, urllib.parse
 kw = sys.stdin.read().strip()
 q = f'{kw} Claude Code skill'
@@ -372,7 +390,7 @@ print(urllib.parse.quote(q))
     fi
 
     local repos
-    repos=$(echo "$body" | python3 -c "
+    repos=$(echo "$body" | "$PYTHON" -c "
 import sys, json
 data = json.load(sys.stdin)
 items = data.get('items', [])
@@ -401,7 +419,7 @@ fetch_bing() {
     local query="$1"
 
     local encoded
-    encoded=$(echo "$query" | python3 -c "
+    encoded=$(echo "$query" | "$PYTHON" -c "
 import sys, urllib.parse
 print(urllib.parse.quote(sys.stdin.read().strip()))
 " 2>/dev/null || echo "")
@@ -429,7 +447,7 @@ print(urllib.parse.quote(sys.stdin.read().strip()))
 
     # Extract result links and titles from Bing HTML
     local results
-    results=$(echo "$body" | python3 -c "
+    results=$(echo "$body" | "$PYTHON" -c "
 import sys, re, json
 html = sys.stdin.read()
 # Bing results: <h2><a href='url'>title</a></h2>
@@ -462,7 +480,7 @@ fetch_ddg() {
     fi
 
     local encoded
-    encoded=$(echo "$query" | python3 -c "
+    encoded=$(echo "$query" | "$PYTHON" -c "
 import sys, urllib.parse
 print(urllib.parse.quote(sys.stdin.read().strip()))
 " 2>/dev/null || echo "")
@@ -486,7 +504,7 @@ print(urllib.parse.quote(sys.stdin.read().strip()))
 
     # Extract result links and titles from DDG Lite HTML
     local results
-    results=$(echo "$body" | python3 -c "
+    results=$(echo "$body" | "$PYTHON" -c "
 import sys, re
 html = sys.stdin.read()
 # DDG Lite format: <a href='url'>title</a><br><span class='...'>snippet</span>
@@ -523,7 +541,7 @@ fetch_repo_meta() {
     fi
 
     local meta
-    meta=$(echo "$body" | python3 -c "
+    meta=$(echo "$body" | "$PYTHON" -c "
 import sys, json
 data = json.load(sys.stdin)
 if 'message' in data:
@@ -561,7 +579,7 @@ fetch_awesome() {
         fi
         if [ -n "$body" ] && [ ${#body} -gt 100 ]; then
             local repos
-            repos=$(echo "$body" | grep -oE 'https://github\.com/[\w.-]+/[\w.-]+' | sort -u | head -20 | python3 -c "
+            repos=$(echo "$body" | grep -oE 'https://github\.com/[\w.-]+/[\w.-]+' | sort -u | head -20 | "$PYTHON" -c "
 import sys, json
 lines = [l.strip() for l in sys.stdin if l.strip()]
 print(json.dumps(lines, ensure_ascii=False))

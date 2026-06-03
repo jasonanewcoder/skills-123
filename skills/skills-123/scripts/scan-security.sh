@@ -9,6 +9,17 @@
 
 set -euo pipefail
 
+# ── Python detection ──────────────────────────────────────────────────────
+PYTHON=""
+if command -v python3 &>/dev/null; then
+    PYTHON="python3"
+elif command -v python &>/dev/null; then
+    if python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" 2>/dev/null; then
+        PYTHON="python"
+    fi
+fi
+PYTHON="${PYTHON:-python3}"  # fallback string if neither found
+
 CONTENT=""
 if [ $# -ge 1 ] && [ -f "$1" ]; then
     CONTENT=$(cat "$1")
@@ -102,11 +113,11 @@ for pattern in "${WARNING_PATTERNS[@]}"; do
     fi
 done
 
-# Check for suspicious Unicode characters and base64 blocks via python3
+# Check for suspicious Unicode characters and base64 blocks via python
 suspicious_count=0
 suspicious_details_json="[]"
-if command -v python3 &>/dev/null; then
-    suspicious_result=$(echo "$CONTENT" | python3 -c "
+if command -v "$PYTHON" &>/dev/null; then
+    suspicious_result=$(echo "$CONTENT" | $PYTHON -c "
 import sys, json, re
 text = sys.stdin.read()
 findings = []
@@ -135,8 +146,8 @@ if b64_blocks:
 
 print(json.dumps({'count': len(findings), 'details': findings}, ensure_ascii=False))
 " 2>/dev/null)
-    suspicious_count=$(echo "$suspicious_result" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null || echo 0)
-    suspicious_details_json=$(echo "$suspicious_result" | python3 -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('details',[])))" 2>/dev/null || echo "[]")
+    suspicious_count=$(echo "$suspicious_result" | $PYTHON -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null || echo 0)
+    suspicious_details_json=$(echo "$suspicious_result" | $PYTHON -c "import sys,json; print(json.dumps(json.load(sys.stdin).get('details',[])))" 2>/dev/null || echo "[]")
 fi
 
 # Check content size (excessively large files are suspicious)
@@ -154,7 +165,7 @@ if [ "$long_lines" -gt 0 ]; then
 fi
 
 # Build result — pass all data to a single python3 invocation
-python3 -c "
+$PYTHON -c "
 import sys, json
 
 result = {
@@ -162,8 +173,8 @@ result = {
     'warnings': $warning_count,
     'suspicious': $suspicious_count,
     'safe': $([ "$critical_count" -eq 0 ] && echo 'True' || echo 'False'),
-    'critical_patterns': $(printf '%s\n' "${critical_details[@]:-}" | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
-    'warning_patterns': $(printf '%s\n' "${warning_details[@]:-}" | python3 -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
+    'critical_patterns': $(printf '%s\n' "${critical_details[@]:-}" | $PYTHON -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
+    'warning_patterns': $(printf '%s\n' "${warning_details[@]:-}" | $PYTHON -c "import sys,json; print(json.dumps([l.strip() for l in sys.stdin.read().splitlines() if l.strip()]))" 2>/dev/null || echo '[]'),
     'suspicious_details': ${suspicious_details_json:-[]},
     'recommendation': '$([ "$critical_count" -eq 0 ] && [ "$warning_count" -eq 0 ] && [ "$suspicious_count" -eq 0 ] && echo 'clean' || ([ "$critical_count" -gt 0 ] && echo 'reject' || echo 'review') )'
 }

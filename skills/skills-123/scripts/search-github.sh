@@ -13,9 +13,21 @@
 
 set -euo pipefail
 
+# ── Python detection ──────────────────────────────────────────────────────
+# On Windows (Git Bash) and some Linux distros, python3 may be "python".
+PYTHON=""
+if command -v python3 &>/dev/null; then
+    PYTHON="python3"
+elif command -v python &>/dev/null; then
+    if python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" 2>/dev/null; then
+        PYTHON="python"
+    fi
+fi
+PYTHON="${PYTHON:-python3}"  # fallback string if neither found
+
 # Read keywords from stdin (JSON format)
 INPUT=$(cat)
-KEYWORDS=$(echo "$INPUT" | python3 -c "
+KEYWORDS=$(echo "$INPUT" | $PYTHON -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
