@@ -29,35 +29,315 @@ USER_AGENT="skills-123-fallback/1.0"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
 # ── China / Mirror network config ───────────────────────────────────────────
-# Set CHINA_MODE=1 to enable built-in China-friendly mirrors and search sources.
+# CHINA_MODE is auto-detected by default (probes network connectivity).
+# Set CHINA_MODE=0 or 1 explicitly to override auto-detection.
 # Or set individual mirror vars for fine-grained control.
 # curl already respects https_proxy / all_proxy env vars — set them if you use a proxy.
 #
-#   CHINA_MODE=1                              # auto-enable all mirrors
-#   SKILLS_MIRROR_RAW="raw.ghproxy.com"       # host-replacement for raw.githubusercontent.com
-#   SKILLS_MIRROR_API="gh.api.99988866.xyz"   # host-replacement for api.github.com
-#   SKILLS_MIRROR_GIT="https://ghproxy.com/"  # prefix for git clone URLs
-#   SKILLS_SEARCH_BING=1                      # use Bing instead of DuckDuckGo
+#   CHINA_MODE=1                              # force-enable mirrors + Bing search
+#   CHINA_MODE=0                              # force-disable (skip detection)
+#   SKILLS_MIRROR_RAW="your-mirror.com"        # host-replacement for raw.githubusercontent.com
+#   SKILLS_MIRROR_API="your-mirror.com"        # host-replacement for api.github.com
+#   SKILLS_MIRROR_GIT="https://your-proxy.com/" # prefix for git clone URLs
+#   SKILLS_SEARCH_BING=1                      # force Bing search
+
+# Save whether user explicitly set CHINA_MODE before we apply defaults
+if [ -n "${CHINA_MODE+x}" ]; then
+    CHINA_MODE_EXPLICIT=1   # user set it — don't auto-detect
+else
+    CHINA_MODE_EXPLICIT=0   # not set — auto-detect
+fi
 CHINA_MODE="${CHINA_MODE:-0}"
 SKILLS_MIRROR_RAW="${SKILLS_MIRROR_RAW:-}"
 SKILLS_MIRROR_API="${SKILLS_MIRROR_API:-}"
 SKILLS_MIRROR_GIT="${SKILLS_MIRROR_GIT:-}"
 SKILLS_SEARCH_BING="${SKILLS_SEARCH_BING:-0}"
 
-# Built-in mirror candidates (tried in order when direct access fails).
-# Each entry is "type|template" where {host} is replaced with the original host,
-# and {url} is replaced with the full original URL.
-# Host-replace mirrors (raw/api): "raw|raw.ghproxy.com"
-# Prefix-proxy mirrors:           "raw|ghproxy.com/https://{host}/{path}"
-readonly BUILTIN_MIRRORS=(
-    # host-replace style (cleaner, faster)
-    "raw|raw.ghproxy.com"
-    "raw|raw.mghproxy.com"
-    "api|gh.api.99988866.xyz"
-    # prefix-proxy style (works with any GitHub URL)
-    "raw|ghproxy.com/https://raw.githubusercontent.com"
-    "api|ghproxy.com/https://api.github.com"
+# Built-in mirror candidates — removed. Mirrors are community-maintained and expire.
+# When CHINA_MODE=1, use discover_mirrors() below to find currently-working mirrors.
+# Users can also set their own: SKILLS_MIRROR_RAW, SKILLS_MIRROR_API, SKILLS_MIRROR_GIT.
+
+# ── Mirror cache config ──────────────────────────────────────────────────
+MIRROR_CACHE_DIR="${HOME}/.claude/skills/skills-123/cache"
+MIRROR_CACHE="${MIRROR_CACHE_DIR}/mirrors.json"
+MIRROR_CACHE_TTL=21600  # 6 hours — mirrors are ephemeral; re-discover often
+NETWORK_PROFILE="${MIRROR_CACHE_DIR}/network-profile.json"
+NETWORK_PROFILE_TTL=86400  # 24 hours — network environment changes slowly
+
+# ── Auto-detect restricted network ──────────────────────────────────────
+# If the user hasn't explicitly set CHINA_MODE, probe the network to
+# determine if we're behind a firewall that blocks raw.githubusercontent.com
+# but allows Bing (typical of mainland China / restricted networks).
+# Detection result is cached for 24h to avoid probing every invocation.
+#
+# Priority: user-set CHINA_MODE → cached detection → live probe → default off
+auto_detect_network() {
+    # User explicitly set CHINA_MODE — respect their choice, skip detection
+    if [ "$CHINA_MODE_EXPLICIT" = "1" ]; then
+        return 0
+    fi
+
+    # Check cache
+    if [ -f "$NETWORK_PROFILE" ]; then
+        local cache_age
+        cache_age=$(($(date +%s) - $(date -r "$NETWORK_PROFILE" +%s 2>/dev/null || printf "99999")))
+        if [ "${cache_age:-99999}" -lt "$NETWORK_PROFILE_TTL" ] 2>/dev/null; then
+            # Read cached china_mode with grep (avoids Python Windows path issues)
+            local cached_mode
+            cached_mode=$(grep -o '"china_mode":[0-9]*' "$NETWORK_PROFILE" 2>/dev/null | grep -o '[0-9]*' || echo "0")
+            if [ "$cached_mode" = "1" ]; then
+                CHINA_MODE=1
+                SKILLS_SEARCH_BING=1
+            fi
+            return 0
+        fi
+    fi
+
+    # ── Live probe (5s timeout each, one retry, total max ~12s) ─────────
+    local raw_ok=false
+    local bing_ok=false
+
+    # Probe 1: raw.githubusercontent.com (test known file, same URL fetch_check uses)
+    local raw_code
+    raw_code=$(curl -sS --max-time 5 --connect-timeout 3 --retry 1 --retry-delay 1 \
+        -o /dev/null -w "%{http_code}" \
+        "https://raw.githubusercontent.com/travisvn/awesome-claude-skills/main/README.md" 2>/dev/null || echo "000")
+    if [ "$raw_code" = "200" ]; then
+        raw_ok=true
+    fi
+
+    # Probe 2: cn.bing.com (China-accessible search engine)
+    local bing_code
+    bing_code=$(curl -sS --max-time 5 --connect-timeout 3 \
+        -o /dev/null -w "%{http_code}" \
+        "https://cn.bing.com/" 2>/dev/null || echo "000")
+    if [ "$bing_code" = "200" ] || [ "$bing_code" = "301" ] || [ "$bing_code" = "302" ]; then
+        bing_ok=true
+    fi
+
+    # ── Heuristic: GitHub unreachable + Bing reachable = restricted network ──
+    if ! $raw_ok && $bing_ok; then
+        CHINA_MODE=1
+        SKILLS_SEARCH_BING=1
+    fi
+
+    # ── Cache the result ─────────────────────────────────────────────────
+    mkdir -p "$MIRROR_CACHE_DIR" 2>/dev/null || true
+    local _ts
+    _ts=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || echo "")
+    printf '{"china_mode":%s,"raw_ok":%s,"bing_ok":%s,"detected_at":"%s"}\n' \
+        "$CHINA_MODE" "$raw_ok" "$bing_ok" "$_ts" > "$NETWORK_PROFILE" 2>/dev/null || true
+}
+
+# Auto-detect will be called after Python is available (see below)
+
+# ── Dynamic mirror discovery ─────────────────────────────────────────────
+# When CHINA_MODE=1 and direct GitHub access fails, this function searches the
+# web for currently-available GitHub mirrors, tests them, and returns working URLs.
+# Results are cached for MIRROR_CACHE_TTL seconds to avoid re-searching every call.
+#
+# Output: one mirror per line in "host|style" format (e.g. "example.com|host-replace")
+discover_mirrors() {
+    local mirror_type="$1"  # "raw" or "api"
+
+    # ── 1. Check cache ──────────────────────────────────────────────────
+    if [ -f "$MIRROR_CACHE" ]; then
+        local cache_age
+        cache_age=$(($(date +%s) - $(date -r "$MIRROR_CACHE" +%s 2>/dev/null || printf "99999")))
+        if [ "${cache_age:-99999}" -lt "$MIRROR_CACHE_TTL" ] 2>/dev/null; then
+            # Read cached mirrors for this type
+            local cached
+            cached=$($PYTHON -c "
+import sys, json, os
+try:
+    with open(os.environ.get('SKILLS_MIRROR_CACHE','')) as f:
+        data = json.load(f)
+    for m in data.get(os.environ.get('SKILLS_MIRROR_TYPE',''), []):
+        sys.stdout.write(m['host'] + '|' + m.get('style','host-replace') + '\n')
+except: pass
+" 2>/dev/null)
+            if [ -n "$cached" ]; then
+                echo "$cached"
+                return 0
+            fi
+        fi
+    fi
+
+    # ── 2. Search for current mirrors via Bing ──────────────────────────
+    local search_query
+    if [ "$mirror_type" = "raw" ]; then
+        search_query="raw.githubusercontent.com github mirror proxy 镜像站 加速 2024 2025"
+    else
+        search_query="api.github.com github mirror proxy 镜像站 加速 2024 2025"
+    fi
+
+    # Use Bing (works in China) — fetch raw HTML for parsing
+    local encoded_query
+    encoded_query=$(echo "$search_query" | $PYTHON -c "import sys,urllib.parse; print(urllib.parse.quote(sys.stdin.read().strip()))" 2>/dev/null)
+    local bing_html
+    bing_html=$(fetch_url "https://cn.bing.com/search?q=${encoded_query}&count=10")
+    if [ -z "$bing_html" ]; then
+        bing_html=$(fetch_url "https://www.bing.com/search?q=${encoded_query}&count=10")
+    fi
+    if [ -z "$bing_html" ]; then
+        return 1
+    fi
+
+    # ── 3. Extract mirror candidates from search result pages & test ────
+    # We also fetch the top 2 result pages directly to find mirror URLs
+    # embedded in those pages
+    local result_urls
+    result_urls=$(echo "$bing_html" | $PYTHON -c "
+import sys, re, json
+html = sys.stdin.read()
+# Extract href URLs from Bing result links
+urls = re.findall(r'<a[^>]+href=[\"']([^\"']+)[\"'][^>]*>', html)
+# Filter: keep only non-Bing, non-ad URLs that look like real pages
+filtered = []
+for u in urls:
+    u = u.strip()
+    if not u or u.startswith('#') or u.startswith('javascript:'): continue
+    if 'bing.com' in u or 'microsoft.com' in u or 'go.microsoft.com' in u: continue
+    if u not in filtered:
+        filtered.append(u)
+print(json.dumps(filtered[:5]))
+" 2>/dev/null || echo '[]')
+
+    # Merge: Bing HTML + top result pages → extract hostnames → test
+    local discovered
+    discovered=$(echo "$bing_html" | SKILLS_MIRROR_TYPE="$mirror_type" SKILLS_MIRROR_CACHE="$MIRROR_CACHE" RESULT_URLS="$result_urls" $PYTHON -c "
+import sys, re, json, urllib.request, ssl, os, time
+
+mirror_type = os.environ.get('SKILLS_MIRROR_TYPE', 'raw')
+cache_file = os.environ.get('SKILLS_MIRROR_CACHE', '')
+
+# Combine text sources: Bing HTML + top result page bodies
+text_sources = [sys.stdin.read()]
+
+# Fetch top result pages to look for mirror URLs in their content
+try:
+    result_urls = json.loads(os.environ.get('RESULT_URLS', '[]'))
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    for url in result_urls[:3]:
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'skills-123/1.0'})
+            resp = urllib.request.urlopen(req, timeout=6, context=ctx)
+            body = resp.read().decode('utf-8', errors='replace')[:50000]
+            text_sources.append(body)
+        except:
+            pass
+except:
+    pass
+
+combined_text = '\n'.join(text_sources)
+
+# ── Extract candidate hostnames ──────────────────────────────────────────
+# Pattern 1: GitHub raw content structure → https://HOST/owner/repo/ref/file
+github_raw = re.findall(
+    r'https?://([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}/'
+    r'[\w.\-]+/[\w.\-]+/(?:main|master|HEAD|raw|blob)/',
+    combined_text, re.IGNORECASE
 )
+
+# Pattern 2: Explicit mirror URLs in lists/tables (common format on mirror-list pages)
+# e.g. \"| raw.xxx.com | ...\" or \"- https://raw.xxx.com\" or \"raw.xxx.com\"
+mirror_mentions = re.findall(
+    r'(?:mirror|proxy|镜像|加速|cdn|ghproxy|fastgit)[^>]*?'
+    r'(?:https?://)?([a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})'
+    r'(?:/\S*)?',
+    combined_text, re.IGNORECASE
+)
+
+# Pattern 3: Any URL on the page that looks like it could proxy GitHub
+all_urls = re.findall(r'https?://([a-zA-Z0-9][^/\s<>\"\'\]\)]+)/', combined_text)
+
+candidate_hosts = set()
+skip_domains = {
+    'github.com', 'raw.githubusercontent.com', 'api.github.com', 'gist.githubusercontent.com',
+    'bing.com', 'cn.bing.com', 'www.bing.com', 'google.com', 'microsoft.com',
+    'github.io', 'w3.org', 'schema.org', 'twitter.com', 'facebook.com', 'youtube.com',
+    'npmjs.com', 'pypi.org', 'stackoverflow.com', 'medium.com', 'reddit.com',
+    'linkedin.com', 'instagram.com', 'wikipedia.org', 'baidu.com', 'zhihu.com',
+    'csdn.net', 'jianshu.com', 'juejin.cn', 'segmentfault.com', 'cloudflare.com',
+}
+
+for host in github_raw + mirror_mentions + all_urls:
+    host = host.strip().lower()
+    if not host: continue
+    # Remove trailing punctuation
+    host = host.rstrip('.,;:!?)]}>\"\'')
+    # Skip known non-mirror domains
+    if host in skip_domains: continue
+    if any(skip in host for skip in ['bing.com', 'google.com', 'microsoft.com', 'github.com/blog']):
+        continue
+    # Must be a plausible hostname
+    if '.' not in host or len(host) < 4: continue
+    if host.startswith('.') or host.startswith('-'): continue
+    candidate_hosts.add(host)
+
+# ── Test candidates ─────────────────────────────────────────────────────
+test_file = 'travisvn/awesome-claude-skills/main/README.md'
+test_marker = 'awesome-claude-skills'
+ctx = ssl.create_default_context()
+ctx.check_hostname = False
+ctx.verify_mode = ssl.CERT_NONE
+
+working = []
+for host in list(candidate_hosts)[:20]:  # limit to avoid long discovery
+    # Test 1: host-replace style
+    try:
+        test_url = f'https://{host}/{test_file}'
+        req = urllib.request.Request(test_url, headers={'User-Agent': 'skills-123/1.0'})
+        resp = urllib.request.urlopen(req, timeout=5, context=ctx)
+        body = resp.read().decode('utf-8', errors='replace')
+        if len(body) > 200 and test_marker.lower() in body.lower():
+            working.append({'host': host, 'style': 'host-replace'})
+            continue
+    except Exception:
+        pass
+
+    # Test 2: prefix-proxy style
+    try:
+        test_url = f'https://{host}/https://raw.githubusercontent.com/{test_file}'
+        req = urllib.request.Request(test_url, headers={'User-Agent': 'skills-123/1.0'})
+        resp = urllib.request.urlopen(req, timeout=5, context=ctx)
+        body = resp.read().decode('utf-8', errors='replace')
+        if len(body) > 200 and test_marker.lower() in body.lower():
+            working.append({'host': host, 'style': 'prefix-proxy'})
+            continue
+    except Exception:
+        pass
+
+# ── Cache results ───────────────────────────────────────────────────────
+if cache_file:
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    existing = {}
+    try:
+        if os.path.exists(cache_file):
+            with open(cache_file) as f:
+                existing = json.load(f)
+    except: pass
+    existing[mirror_type] = working
+    existing['updated_at'] = time.strftime('%Y-%m-%dT%H:%M:%S%z')
+    try:
+        with open(cache_file, 'w') as f:
+            json.dump(existing, f, ensure_ascii=False)
+    except: pass
+
+# ── Output discovered mirrors ───────────────────────────────────────────
+for m in working:
+    sys.stdout.write(m['host'] + '|' + m['style'] + '\n')
+" 2>/dev/null)
+
+    if [ -n "$discovered" ]; then
+        echo "$discovered"
+        return 0
+    fi
+
+    return 1
+}
 
 # ── Python detection ──────────────────────────────────────────────────────
 # On Windows (Git Bash) and some Linux distros, python3 may be "python".
@@ -76,6 +356,9 @@ if [ -z "$PYTHON" ]; then
     echo '{"ok":false,"error":"python3/python not found in PATH — required by fetch-local.sh"}' >&2
     exit 1
 fi
+
+# ── Run network auto-detection (now that Python is available) ──────────
+auto_detect_network
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
 json_ok() {
@@ -149,24 +432,24 @@ generate_mirror_urls() {
         mirrors+=("https://${user_mirror}${path}")
     fi
 
-    # 2. Built-in mirrors (when CHINA_MODE=1 or user configured mirrors)
+    # 2. Discovered mirrors (when CHINA_MODE=1 or user configured mirrors)
     if [ "$CHINA_MODE" = "1" ] || [ -n "$user_mirror" ]; then
-        for entry in "${BUILTIN_MIRRORS[@]}"; do
-            local e_type="${entry%%|*}"
-            local e_tmpl="${entry#*|}"
-            [ "$e_type" != "$mirror_type" ] && continue
+        local discovered
+        discovered=$(discover_mirrors "$mirror_type" 2>/dev/null)
+        if [ -n "$discovered" ]; then
+            while IFS='|' read -r mirror_host mirror_style; do
+                [ -z "$mirror_host" ] && continue
+                # Skip if same as user-configured mirror
+                if [ "$mirror_host" = "$user_mirror" ]; then continue; fi
 
-            # Skip if same as user-configured mirror
-            if [ "$e_tmpl" = "$user_mirror" ]; then continue; fi
-
-            if echo "$e_tmpl" | grep -q "/"; then
-                # Prefix-proxy style: ghproxy.com/https://{host}/{path}
-                mirrors+=("https://${e_tmpl}${path}")
-            else
-                # Host-replace style: raw.ghproxy.com
-                mirrors+=("https://${e_tmpl}${path}")
-            fi
-        done
+                if [ "$mirror_style" = "prefix-proxy" ]; then
+                    mirrors+=("https://${mirror_host}/https://${host}${path}")
+                else
+                    # Default: host-replace style
+                    mirrors+=("https://${mirror_host}${path}")
+                fi
+            done <<< "$discovered"
+        fi
     fi
 
     printf '%s\n' "${mirrors[@]}"
@@ -609,24 +892,31 @@ fetch_check() {
         results+="raw.githubusercontent.com(direct): FAIL, "
         all_ok=false
 
-        # Test raw mirrors
-        for mirror in raw.ghproxy.com raw.mghproxy.com; do
-            if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
-                "https://${mirror}/travisvn/awesome-claude-skills/main/README.md" 2>/dev/null | grep -q "200"; then
-                mirrors_ok+="${mirror}: OK, "
-                all_ok=true  # mirror works → not a total failure
-                break
-            fi
-        done
+        # Test raw mirrors via discovery
+        local discovered
+        discovered=$(discover_mirrors "raw" 2>/dev/null)
+        if [ -n "$discovered" ]; then
+            while IFS='|' read -r mirror_host mirror_style; do
+                [ -z "$mirror_host" ] && continue
+                if [ "$mirror_style" = "prefix-proxy" ]; then
+                    if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
+                        "https://${mirror_host}/https://raw.githubusercontent.com/travisvn/awesome-claude-skills/main/README.md" 2>/dev/null | grep -q "200"; then
+                        mirrors_ok+="${mirror_host}(prefix): OK, "
+                        all_ok=true
+                        break
+                    fi
+                else
+                    if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
+                        "https://${mirror_host}/travisvn/awesome-claude-skills/main/README.md" 2>/dev/null | grep -q "200"; then
+                        mirrors_ok+="${mirror_host}: OK, "
+                        all_ok=true
+                        break
+                    fi
+                fi
+            done <<< "$discovered"
+        fi
         if [ -z "$mirrors_ok" ]; then
-            # Try prefix-proxy style
-            if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
-                "https://ghproxy.com/https://raw.githubusercontent.com/travisvn/awesome-claude-skills/main/README.md" 2>/dev/null | grep -q "200"; then
-                mirrors_ok+="ghproxy.com(prefix): OK, "
-                all_ok=true
-            else
-                mirrors_ok+="raw-mirrors: ALL_FAILED, "
-            fi
+            mirrors_ok+="raw-mirrors: ALL_FAILED, "
         fi
     fi
 
@@ -638,12 +928,30 @@ fetch_check() {
         results+="api.github.com(direct): FAIL, "
         all_ok=false
 
-        # Test API mirrors
-        if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
-            "https://gh.api.99988866.xyz/" 2>/dev/null | grep -q "200"; then
-            mirrors_ok+="gh.api.99988866.xyz: OK, "
-            all_ok=true
-        else
+        # Test API mirrors via discovery
+        local discovered_api
+        discovered_api=$(discover_mirrors "api" 2>/dev/null)
+        if [ -n "$discovered_api" ]; then
+            while IFS='|' read -r mirror_host mirror_style; do
+                [ -z "$mirror_host" ] && continue
+                if [ "$mirror_style" = "prefix-proxy" ]; then
+                    if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
+                        "https://${mirror_host}/https://api.github.com/" 2>/dev/null | grep -q "200"; then
+                        mirrors_ok+="${mirror_host}(prefix): OK, "
+                        all_ok=true
+                        break
+                    fi
+                else
+                    if curl -sS --max-time 5 -o /dev/null -w "%{http_code}" \
+                        "https://${mirror_host}/" 2>/dev/null | grep -q "200"; then
+                        mirrors_ok+="${mirror_host}: OK, "
+                        all_ok=true
+                        break
+                    fi
+                fi
+            done <<< "$discovered_api"
+        fi
+        if ! echo "$mirrors_ok" | grep -q "api"; then
             mirrors_ok+="api-mirrors: ALL_FAILED, "
         fi
     fi
@@ -676,13 +984,21 @@ fetch_check() {
     local status="degraded"
     if $all_ok; then status="all_ok"; fi
 
-    # Recommend CHINA_MODE if mirrors help
+    # Network auto-detection info
     local hint=""
-    if echo "$diag" | grep -q "raw.githubusercontent.com(direct): FAIL" && echo "$diag" | grep -q "mirrors:.*OK"; then
-        hint=" | Tip: export CHINA_MODE=1 to enable GitHub mirrors automatically"
+    if [ "$CHINA_MODE_EXPLICIT" = "1" ]; then
+        hint=" | CHINA_MODE: user-set ($CHINA_MODE)"
+    elif [ "$CHINA_MODE" = "1" ]; then
+        hint=" | CHINA_MODE: auto-detected (restricted network)"
+    else
+        hint=" | CHINA_MODE: auto-detected (open network)"
     fi
 
-    printf '{"ok":true,"status":"%s","results":"%s%s"}\n' "$status" "$diag" "$hint"
+    printf '{"ok":true,"status":"%s","china_mode":%s,"china_mode_source":"%s","results":"%s"}\n' \
+        "$status" \
+        "$CHINA_MODE" \
+        "$([ "$CHINA_MODE_EXPLICIT" = "1" ] && echo "user" || echo "auto")" \
+        "$diag"
 }
 
 # ── Main dispatch ────────────────────────────────────────────────────────────
@@ -717,18 +1033,60 @@ case "${1:-}" in
     check)
         fetch_check
         ;;
+    discover-mirrors)
+        # Explicitly discover and output currently-working mirrors.
+        # Use shorter timeout for discovery (Bing search should be fast or fail fast).
+        # Turn off pipefail: discover_mirrors returns 1 when nothing found,
+        # but python still outputs valid [].
+        set +o pipefail
+        _save_timeout="$TIMEOUT"
+        TIMEOUT=5  # quick timeout for discovery
+        raw_mirrors=$(discover_mirrors "raw" 2>/dev/null | $PYTHON -c "
+import sys, json
+lines = [l.strip() for l in sys.stdin.read().splitlines() if l.strip()]
+result = [{'host': l.split('|')[0], 'style': l.split('|')[1]} for l in lines if '|' in l]
+sys.stdout.write(json.dumps(result) + '\n')
+" 2>/dev/null)
+        [ -n "$raw_mirrors" ] || raw_mirrors='[]'
+        raw_mirrors="${raw_mirrors//$'\r'/}"
+
+        api_mirrors=$(discover_mirrors "api" 2>/dev/null | $PYTHON -c "
+import sys, json
+lines = [l.strip() for l in sys.stdin.read().splitlines() if l.strip()]
+result = [{'host': l.split('|')[0], 'style': l.split('|')[1]} for l in lines if '|' in l]
+sys.stdout.write(json.dumps(result) + '\n')
+" 2>/dev/null)
+        [ -n "$api_mirrors" ] || api_mirrors='[]'
+        api_mirrors="${api_mirrors//$'\r'/}"
+
+        set -o pipefail  # restore
+        TIMEOUT="$_save_timeout"
+        printf '{"raw":%s,"api":%s}\n' "$raw_mirrors" "$api_mirrors"
+        ;;
     mirror-git)
         # Output the configured git mirror prefix for install-from-github.sh
         if [ -n "$SKILLS_MIRROR_GIT" ]; then
             echo "$SKILLS_MIRROR_GIT"
         elif [ "$CHINA_MODE" = "1" ]; then
-            echo "https://ghproxy.com/"
+            # Try to discover a working git mirror
+            git_mirror=$(discover_mirrors "raw" 2>/dev/null | head -1)
+            if [ -n "$git_mirror" ]; then
+                host="${git_mirror%%|*}"
+                style="${git_mirror#*|}"
+                if [ "$style" = "prefix-proxy" ]; then
+                    echo "https://${host}/"
+                else
+                    echo ""
+                fi
+            else
+                echo ""
+            fi
         else
             echo ""
         fi
         ;;
     *)
-        json_err "usage: fetch-local.sh <raw|api|skill|search|ddg|repo|awesome|check|mirror-git> [args...]"
+        json_err "usage: fetch-local.sh <raw|api|skill|search|ddg|repo|awesome|check|discover-mirrors|mirror-git> [args...]"
         exit 1
         ;;
 esac

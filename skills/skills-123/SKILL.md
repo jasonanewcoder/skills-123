@@ -83,7 +83,7 @@ bash ~/.claude/skills/skills-123/scripts/fetch-local.sh awesome
 ```
 This bypasses claude.ai's proxy entirely and uses your machine's network. Requires `curl` and `python3`.
 
-> **China / restricted networks:** The script respects `CHINA_MODE=1` env var which enables GitHub mirror chains (ghproxy.com etc.) for raw.githubusercontent.com and api.github.com, and switches search to Bing. Also respects `https_proxy` / `all_proxy` for custom proxies. See `references/china-network.md` for detailed setup.
+> **China / restricted networks:** The script respects `CHINA_MODE=1` env var. When direct access to `raw.githubusercontent.com` or `api.github.com` fails, it **dynamically discovers** currently-working GitHub mirrors via web search, tests them, and caches results (6-hour TTL). No hardcoded mirror list — mirrors are discovered fresh when needed. Also respects `https_proxy` / `all_proxy` for custom proxies. Set `SKILLS_MIRROR_RAW` / `SKILLS_MIRROR_API` to skip discovery and use your own mirror. See `references/china-network.md` for detailed setup.
 
 Collect up to 10 candidate repo URLs. **If 0 → exit silently, handle directly.**
 
@@ -215,23 +215,35 @@ These patterns apply to both Proxy (quality gate) and Install (auto-reject):
 If you're in mainland China or behind a restrictive firewall, set these env vars before invoking skills-123:
 
 ```bash
-export CHINA_MODE=1                          # enables mirror chain + Bing search
+# CHINA_MODE is auto-detected by default — no need to set it manually.
+# The script probes raw.githubusercontent.com vs cn.bing.com at startup.
+# If GitHub is unreachable but Bing works → auto CHINA_MODE=1.
+# Only set these if you want to override auto-detection:
+export CHINA_MODE=1                          # force-enable mirror discovery + Bing search
+export CHINA_MODE=0                          # force-disable
 export GITHUB_TOKEN="ghp_xxx"                # optional: higher API rate limits
 export https_proxy="http://127.0.0.1:7890"   # optional: local proxy (Clash/V2Ray)
 ```
 
-**What CHINA_MODE=1 does:**
-- `raw.githubusercontent.com` → tries `raw.ghproxy.com` → `raw.mghproxy.com` → `ghproxy.com` prefix proxy
-- `api.github.com` → tries `gh.api.99988866.xyz` → `ghproxy.com` prefix proxy
-- Search: prefers Bing (`cn.bing.com`) over DuckDuckGo (blocked in China)
-- `git clone` / tarball download: prepends `https://ghproxy.com/` when direct fails
+**How CHINA_MODE works:**
 
-**Custom mirrors:** You can override individual mirror targets:
+1. **Auto-detection (default)** — at startup, the script probes connectivity to `raw.githubusercontent.com` and `cn.bing.com`. If GitHub is unreachable but Bing works, it automatically enables CHINA_MODE=1. Detection result is cached for 24 hours. No user action needed.
+2. **Direct access first** — always tries `raw.githubusercontent.com` / `api.github.com` directly before any mirror
+3. **Dynamic mirror discovery** — when direct fails, searches the web for *currently-working* GitHub mirrors (via Bing), tests each candidate, and uses the first working one. Discovered mirrors are cached for 6 hours.
+4. **Search fallback** — prefers Bing (`cn.bing.com`) over DuckDuckGo (blocked in China)
+5. **No hardcoded mirror list** — community mirrors come and go. `skills-123` finds what works *now*, not what worked when the script was last updated.
+
+**Custom mirrors (skip discovery):**
 ```bash
-export SKILLS_MIRROR_RAW="raw.ghproxy.com"     # raw.githubusercontent.com replacement
-export SKILLS_MIRROR_API="gh.api.99988866.xyz" # api.github.com replacement
-export SKILLS_MIRROR_GIT="https://ghproxy.com/" # git clone prefix
-export SKILLS_SEARCH_BING=1                     # use Bing instead of DDG
+export SKILLS_MIRROR_RAW="your-mirror.com"      # raw.githubusercontent.com replacement
+export SKILLS_MIRROR_API="your-mirror.com"       # api.github.com replacement
+export SKILLS_MIRROR_GIT="https://your-proxy.com/" # git clone prefix
+export SKILLS_SEARCH_BING=1                       # use Bing instead of DDG
+```
+
+**Discover and test mirrors manually:**
+```bash
+bash ~/.claude/skills/skills-123/scripts/fetch-local.sh discover-mirrors
 ```
 
 **Verify connectivity:**

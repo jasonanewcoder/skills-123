@@ -17,15 +17,20 @@ SKILLS_DIR="${HOME}/.claude/skills"
 
 # ── Mirror config for China / slow networks ──────────────────────────────────
 # Set CHINA_MODE=1 or SKILLS_MIRROR_GIT to enable mirror acceleration.
+# Mirrors are dynamically discovered (no hardcoded list — they expire).
 # SKILLS_MIRROR_GIT: prefix prepended to github.com URLs for clone/download.
-#   e.g. "https://ghproxy.com/"  →  https://ghproxy.com/https://github.com/...
+#   e.g. "https://your-mirror.com/"  →  https://your-mirror.com/https://github.com/...
 CHINA_MODE="${CHINA_MODE:-0}"
 SKILLS_MIRROR_GIT="${SKILLS_MIRROR_GIT:-}"
 GIT_MIRROR=""
 if [ -n "$SKILLS_MIRROR_GIT" ]; then
     GIT_MIRROR="$SKILLS_MIRROR_GIT"
 elif [ "$CHINA_MODE" = "1" ]; then
-    GIT_MIRROR="https://ghproxy.com/"
+    # Try dynamic mirror discovery via fetch-local.sh
+    local_fetch_script="${HOME}/.claude/skills/skills-123/scripts/fetch-local.sh"
+    if [ -x "$local_fetch_script" ]; then
+        GIT_MIRROR=$(bash "$local_fetch_script" mirror-git 2>/dev/null || echo "")
+    fi
 fi
 
 # Build mirrored URL if mirror configured
