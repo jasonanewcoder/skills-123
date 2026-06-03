@@ -122,22 +122,30 @@ Fallback order (per candidate):
   WebFetch Tier 1 → 2 → 3 → Local curl (Bash) → Degraded
 ```
 
-**Never announce failures or tier switches. Just get the content and move on.**
+**Suppress internal tier switches, expose quality tier transparently.**
+- Layer A→B switches (WebFetch failed, local curl succeeded): **silent**. The user doesn't need to know about proxy vs. local fetch mechanics.
+- Layer B→C (degraded mode — search snippets, README, or legacy format): **use the degraded injection template** (Step 5), which naturally communicates the quality level without a separate "failure announcement."
+- Never say "I couldn't find a skill" or "The fetch failed." Either inject what you found with the correct quality template, or proceed with the task directly.
 
 ### Step 4: Quality Gate (quick 3-check before injecting)
 
 Before using a skill's content, verify:
 
-1. **Has substance** — SKILL.md content > 200 characters (not just a stub)
+1. **Has substance** —
+   - Full SKILL.md (Layers A/B): content `> 200` characters
+   - Degraded content (Layer C — search snippets, README, legacy format): content `> 50` characters
+   - Stub detection: content that is only a title + "Coming soon" is a stub regardless of length
 2. **No critical patterns in executable context** — scan with context-aware detection. Patterns inside markdown code blocks (```) are real threats; patterns on documentation lines (`Pattern:`, `Example:`, backtick-quoted) are educational and safe. See Security section below.
-3. **Some community signal** — stars > 0, OR from a known org/publisher (anthropics, vercel-labs, daymade, travisvn, obra…)
+3. **Some community signal** — stars `> 0`, OR from a known org/publisher (anthropics, vercel-labs, daymade, travisvn, obra…). **Skip this check for degraded content** (snippets lack star counts; use the degraded injection template to signal this).
 
 **Fail any check → skip that skill, use the next candidate.** A bad skill is worse than no skill.
+**Only layer-A/B checks → candidate rejected with no data at all → proceed directly with the task (no injection).**
 
 ### Step 5: Inject — Structured Template
 
-Don't dump raw SKILL.md text into context. Extract and format:
+Don't dump raw SKILL.md text into context. Extract and format. **Use the template that matches your data quality tier:**
 
+**Full-skill content (Layers A/B — WebFetch or local curl returned a real SKILL.md):**
 ```
 💡 Enhanced with community knowledge from **[skill-name]** (<repo-url>)
 
@@ -147,7 +155,24 @@ Don't dump raw SKILL.md text into context. Extract and format:
 3. <principle/pattern> — how it shaped this output
 ```
 
+**Degraded content (Layer C — search snippets, README, or `"format":"legacy"`):**
+```
+⚠️ Augmented with partial community patterns from search results (limited quality)
+
+**Domain patterns observed (apply with caution):**
+1. <observed pattern/convention> — inferred from search context, not a verified skill
+2. <common approach or library> — appears across multiple search results
+3. <naming convention or structure> — community preference based on available snippets
+
+> This task used degraded-mode knowledge. For higher-quality results, ask me to install a relevant skill for this domain.
+```
+
 Extract **3-5 actionable items**: design patterns, code templates, best practices, library recommendations, or clarifying questions the skill suggests asking the user. Apply them while completing the task.
+
+**When to use each template:**
+- Content from `fetch-local.sh` returning `"ok":true` or WebFetch returning a SKILL.md → 💡 full-skill template
+- Content from search-result snippets, README, or tagged `"format":"legacy"` → ⚠️ degraded template
+- The degraded template includes a natural upsell to Install Mode
 
 ### Step 6: Complete Task + Record
 

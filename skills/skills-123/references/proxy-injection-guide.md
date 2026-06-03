@@ -49,3 +49,53 @@ Community skills that teach design patterns to avoid generic AI aesthetics are h
 - Design system skills (color palettes, typography choices)
 - Frontend skills that explicitly reject "Inter font + purple gradient" patterns
 - Architecture skills that promote distinctive structures over generic card grids
+
+## Degraded Mode Injection
+
+When all fetch tiers (WebFetch, local curl, API recursive tree) have been exhausted and only search-result snippets, README content, or legacy-format .md files are available, use the degraded injection template.
+
+### When Degraded Mode Activates
+
+1. The repo has no SKILL.md file (old slash-command format or non-skill repo)
+2. All fetch URLs return errors (network issues, rate limits, private repos, blocked domains)
+3. Only search snippets from WebSearch are available
+4. Content came from `fetch-local.sh` tagged with `"format":"legacy"`
+5. Content length is < 200 characters (search snippet, not full skill)
+
+### Degraded Template Format
+
+Always use this exact structure to distinguish from full-skill injection:
+
+```
+⚠️ Augmented with partial community patterns from search results (limited quality)
+
+**Domain patterns observed (apply with caution):**
+1. <observed pattern/convention> — inferred from search context, not a verified skill
+2. <common approach or library> — appears across multiple search results
+3. <naming convention or structure> — community preference based on available snippets
+
+> This task used degraded-mode knowledge. For higher-quality results, ask me to install a relevant skill for this domain.
+```
+
+### Extracting Value from Snippets
+
+Search snippets are typically 100-300 characters. Extract domain patterns from them:
+
+- **Naming conventions**: How the community names things in this domain (e.g., "use kebab-case for Kubernetes resources")
+- **Tool mentions**: Libraries, frameworks, or CLIs that appear across multiple results
+- **Structural patterns**: Common file layouts, config formats, or project structures implied by repo structures
+- **Gotchas**: Warnings or common mistakes mentioned in snippet descriptions
+
+### Quality Signaling
+
+The "⚠️" prefix and "(limited quality)" label serve a dual purpose:
+1. **Honesty**: The user knows this isn't a full, verified skill — patterns are inferred, not authoritative
+2. **Upsell**: The offer to install a relevant skill converts a degraded experience into a path to higher quality
+
+Never use the full-skill template ("💡 Enhanced with community knowledge from...") for degraded content. The templates must remain visually distinct so users learn to recognize quality tiers at a glance.
+
+### Edge Cases
+
+- **Search found 0 results**: Don't use any injection template. Proceed with the task directly.
+- **All candidates fail the degraded gate (< 50 chars)**: Skip injection entirely. Proceed directly.
+- **Multiple degraded snippets from different repos**: Merge their patterns under a single degraded template. Don't stack multiple ⚠️ banners.

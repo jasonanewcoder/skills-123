@@ -65,6 +65,13 @@ NETWORK_PROFILE="${MIRROR_CACHE_DIR}/network-profile.json"
 NETWORK_PROFILE_TTL=86400  # 24 hours — network environment changes slowly
 RAW_GITHUB_OK="unknown"
 
+# ── Runtime failure tracking ──────────────────────────────────────────────
+# RAW_FAILURE_COUNT prevents a single transient empty-body response from
+# poisoning all subsequent raw-tier attempts within one invocation.
+# Only mark raw as unavailable after 3 consecutive connection-level failures.
+RAW_FAILURE_COUNT=0
+RAW_FAILURE_THRESHOLD=3
+
 # ── Auto-detect restricted network ──────────────────────────────────────
 # If the user hasn't explicitly set CHINA_MODE, probe the network to
 # determine if we're behind a firewall that blocks raw.githubusercontent.com
@@ -498,7 +505,12 @@ fetch_url_mirrored() {
     local body
     body=$(fetch_url "$url" "$extra_flags") || true
     if [ "$mirror_type" = "raw" ] && [ -z "$body" ]; then
-        RAW_GITHUB_OK=false
+        RAW_FAILURE_COUNT=$((RAW_FAILURE_COUNT + 1))
+        if [ "$RAW_FAILURE_COUNT" -ge "$RAW_FAILURE_THRESHOLD" ]; then
+            RAW_GITHUB_OK=false
+        fi
+    elif [ "$mirror_type" = "raw" ] && [ -n "$body" ]; then
+        RAW_FAILURE_COUNT=0  # reset on any successful raw fetch
     fi
     if [ -n "$body" ] && ! is_error_page "$body"; then
         echo "$body"
@@ -524,16 +536,50 @@ fetch_url_mirrored() {
 
 is_error_page() {
     local body="$1"
-    echo "$body" | grep -qi "404: Not Found\|400: Invalid\|not found\|rate limit exceeded" && return 0
-    # GitHub API error messages
+    local body_len=${#body}
+
+    # ── Guard: legitimate SKILL.md content is large; error pages are small ──
+    # GitHub 404 pages are ~200 bytes; API error JSON is ~50-150 bytes.
+    # Content > 500 bytes that is valid JSON with a short message is the only
+    # large-body error pattern. Everything else large is presumed legitimate.
+    if [ "$body_len" -gt 500 ]; then
+        # Only flag if it's GitHub API error JSON with exactly a message field
+        echo "$body" | "$PYTHON" -c "
+import sys, json
+try:
+    d = json.load(sys.stdin)
+    if isinstance(d, dict) and len(d) <= 3 and 'message' in d:
+        msg = str(d.get('message', ''))
+        if 'not found' in msg.lower() and len(msg) < 60:
+            sys.exit(0)
+        if 'API rate limit exceeded' in msg:
+            sys.exit(0)
+except: pass
+sys.exit(1)
+" 2>/dev/null && return 0
+        return 1
+    fi
+
+    # ── Small body: precise patterns only ──────────────────────────────────
+    # Match HTTP status lines (GitHub's standard error format)
+    echo "$body" | grep -qiE "404: Not Found|400: Invalid|403: Forbidden|401: Unauthorized" && return 0
+
+    # Match GitHub-specific error phrases (not general English substrings)
+    echo "$body" | grep -qiE "Repository not found|API rate limit exceeded" && return 0
+
+    # JSON API error: short body, JSON with "message" key
     echo "$body" | "$PYTHON" -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
-    if d.get('message'): sys.exit(0)
+    if isinstance(d, dict) and 'message' in d:
+        msg = str(d.get('message', ''))
+        if ('not found' in msg.lower() or 'API rate limit' in msg) and len(d) <= 3:
+            sys.exit(0)
 except: pass
 sys.exit(1)
 " 2>/dev/null && return 0
+
     return 1
 }
 
@@ -549,6 +595,7 @@ fetch_raw() {
     local ref="${2:-main}"  # branch or HEAD
     local file="${3:-SKILL.md}"
 
+    # Check availability once at entry — not after every attempt
     raw_github_unavailable && return 1
 
     local url="https://raw.githubusercontent.com/${owner_repo}/${ref}/${file}"
@@ -559,22 +606,18 @@ fetch_raw() {
         json_ok "$body"
         return 0
     fi
-    raw_github_unavailable && return 1
 
     # If HEAD failed, try main
     if [ "$ref" = "HEAD" ]; then
-        raw_github_unavailable && return 1
         url="https://raw.githubusercontent.com/${owner_repo}/main/${file}"
         body=$(fetch_url_mirrored "$url" "raw") || true
         if [ -n "$body" ] && ! is_error_page "$body"; then
             json_ok "$body"
             return 0
         fi
-        raw_github_unavailable && return 1
     fi
 
     # If main failed, try master
-    raw_github_unavailable && return 1
     url="https://raw.githubusercontent.com/${owner_repo}/master/${file}"
     body=$(fetch_url_mirrored "$url" "raw") || true
     if [ -n "$body" ] && ! is_error_page "$body"; then
@@ -632,10 +675,79 @@ if isinstance(data, dict) and 'content' in data:
     return 1
 }
 
+# ── Skill path ranking ────────────────────────────────────────────────────
+# Ranks SKILL.md paths by relevance to SKILLS_QUERY_KEYWORDS (env var).
+# Without keywords, sorts by depth then alphabetically (deterministic).
+rank_skill_paths() {
+    local query="${SKILLS_QUERY_KEYWORDS:-}"
+    if [ -z "$query" ]; then
+        cat | "$PYTHON" -c "
+import sys
+paths = [l.strip() for l in sys.stdin if l.strip()]
+paths.sort(key=lambda p: (p.count('/'), p.lower()))
+for p in paths: print(p)
+"
+    else
+        cat | "$PYTHON" -c "
+import sys, os
+query = os.environ.get('SKILLS_QUERY_KEYWORDS', '').lower().split()
+paths = [l.strip() for l in sys.stdin if l.strip()]
+
+def score(path):
+    parts = path.split('/')
+    # Extract the directory containing SKILL.md
+    skill_dir = ''
+    for i, p in enumerate(parts):
+        if p == 'SKILL.md' and i > 0:
+            skill_dir = parts[i-1].lower()
+            break
+    if not skill_dir:
+        skill_dir = parts[0].lower() if parts else ''
+
+    s = 0
+    search_text = skill_dir + ' ' + path.lower().replace('-', ' ').replace('_', ' ')
+    for kw in query:
+        kw_clean = kw.replace('-', '').replace('_', '')
+        if kw in search_text.split():
+            s += 2  # exact word match
+        elif kw_clean in search_text.replace('-', '').replace('_', ''):
+            s += 1  # match ignoring separators
+    return (-s, path.count('/'), path.lower())
+
+paths.sort(key=score)
+for p in paths: print(p)
+"
+    fi
+}
+
+# ── Validate repo exists ──────────────────────────────────────────────────
+validate_repo() {
+    local owner_repo="$1"
+    local url="https://api.github.com/repos/${owner_repo}"
+    local http_code
+    http_code=$(curl -sS --max-time 5 --connect-timeout 3 \
+        -o /dev/null -w '%{http_code}' \
+        -H "User-Agent: $USER_AGENT" \
+        ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} \
+        "$url" 2>/dev/null || echo "000")
+
+    if [ "$http_code" = "200" ] || [ "$http_code" = "301" ] || [ "$http_code" = "302" ]; then
+        return 0
+    fi
+    if [ "$http_code" = "404" ]; then
+        return 1
+    fi
+    # Any other code: assume exists (don't block on transient errors)
+    return 0
+}
+
 # ── Tier 1-3 combined: Multi-tier SKILL.md fetch ─────────────────────────────
 # Strategy: when raw.githubusercontent.com is known-unavailable (cached), skip
 # slow raw timeouts and go directly to API. When raw status is unknown, try both
 # in parallel for speed.
+#
+# Environment: SKILLS_QUERY_KEYWORDS — space-separated keywords for ranking
+#              multiple SKILL.md files in multi-skill repos (optional).
 fetch_skill() {
     local owner_repo="$1"
     local ref="${2:-HEAD}"
@@ -653,22 +765,51 @@ fetch_skill() {
         return 1
     fi
 
+    # Validate repo exists (lightweight HEAD check, avoids wasted API calls)
+    if ! validate_repo "$owner_repo"; then
+        json_err "repository '${owner_repo}' not found (possibly renamed or moved)"
+        return 1
+    fi
+
     local result
 
     # ── Fast path: raw known-good → try raw first (no rate limit) ────────────
     if [ "${RAW_GITHUB_OK:-unknown}" != "false" ]; then
-        # Try raw HEAD for SKILL.md
+        # Try root SKILL.md first (most common pattern for single-skill repos)
         result=$(fetch_raw "$owner_repo" "$ref" "SKILL.md") 2>/dev/null && { echo "$result"; return 0; }
 
-        # Try raw with common subpaths
+        # Try common subpaths (repo name as skill dir)
         for subpath in \
             "skills/${skill_name}/SKILL.md" \
-            "skills/default/SKILL.md" \
             "skill/SKILL.md" \
             ".claude/skills/${skill_name}/SKILL.md" \
-            "SKILL.md"; do
+            "skills/default/SKILL.md"; do
             result=$(fetch_raw "$owner_repo" "HEAD" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
         done
+
+        # Enumerate skills/ directory via API contents endpoint
+        # (needed when skill directories are NOT named after the repo)
+        local skills_dir_url="https://api.github.com/repos/${owner_repo}/contents/skills"
+        local skills_list
+        skills_list=$(fetch_url_mirrored "$skills_dir_url" "api") || true
+        if [ -n "$skills_list" ]; then
+            local skill_dirs
+            skill_dirs=$(echo "$skills_list" | "$PYTHON" -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    for item in data:
+        if item.get('type') == 'dir':
+            print(f'skills/{item[\"name\"]}/SKILL.md')
+except: pass
+" 2>/dev/null)
+            if [ -n "$skill_dirs" ]; then
+                while IFS= read -r subpath; do
+                    [ -z "$subpath" ] && continue
+                    result=$(fetch_raw "$owner_repo" "HEAD" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
+                done <<< "$skill_dirs"
+            fi
+        fi
     fi
 
     # ── API-first path (main path when raw is blocked) ───────────────────────
@@ -676,12 +817,11 @@ fetch_skill() {
     # more API call fetches it. More efficient than guessing paths when
     # raw.githubusercontent.com is down.
 
-    # Attempt 1: API recursive tree to find SKILL.md path
+    # Attempt 1: API recursive tree to find SKILL.md paths (ranked by relevance)
     local tree_url="https://api.github.com/repos/${owner_repo}/git/trees/HEAD?recursive=1"
     local tree_body
     tree_body=$(fetch_url_mirrored "$tree_url" "api") || true
     if [ -n "$tree_body" ]; then
-        # Extract ALL SKILL.md paths from the tree (not just first)
         local skill_paths
         skill_paths=$(echo "$tree_body" | "$PYTHON" -c "
 import sys, json
@@ -692,17 +832,32 @@ try:
         p = item.get('path', '')
         if p.endswith('SKILL.md'):
             paths.append(p)
-    # Sort: prefer root or skills/<name>/SKILL.md over nested paths
-    paths.sort(key=lambda p: (p.count('/'), len(p)))
     for p in paths:
         print(p)
 except: pass
-" 2>/dev/null || echo "")
+" 2>/dev/null | rank_skill_paths)
         if [ -n "$skill_paths" ]; then
+            local path_count
+            path_count=$(echo "$skill_paths" | grep -c . || echo "0")
+            # Limit to top 5 for repos with many skills (e.g. 139)
+            if [ "$path_count" -gt 5 ] 2>/dev/null; then
+                skill_paths=$(echo "$skill_paths" | head -5)
+                path_count=5
+            fi
             while IFS= read -r skill_path; do
                 [ -z "$skill_path" ] && continue
                 # Try API content (works even when raw is blocked)
-                result=$(fetch_api "$owner_repo" "$skill_path") 2>/dev/null && { echo "$result"; return 0; }
+                result=$(fetch_api "$owner_repo" "$skill_path") 2>/dev/null || true
+                if [ -n "$result" ]; then
+                    # Inject metadata: skills_found and selected_skill
+                    echo "$result" | "$PYTHON" -c "
+import sys, json
+data = json.load(sys.stdin)
+data['skills_found'] = int('${path_count:-0}')
+data['selected_skill'] = '${skill_path}'
+print(json.dumps(data))
+" 2>/dev/null && return 0
+                fi
                 # Fallback: try raw (might work via mirror)
                 result=$(fetch_raw "$owner_repo" "HEAD" "$skill_path") 2>/dev/null && { echo "$result"; return 0; }
             done <<< "$skill_paths"
@@ -719,9 +874,56 @@ except: pass
         result=$(fetch_api "$owner_repo" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
     done
 
-    # Attempt 3: Last-resort raw (might have been fixed since last probe)
+    # Attempt 3: Enumerate skills/ via API contents + try each
+    if [ -n "${skills_list:-}" ]; then
+        while IFS= read -r subpath; do
+            [ -z "$subpath" ] && continue
+            result=$(fetch_api "$owner_repo" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
+        done <<< "$skill_dirs"
+    fi
+
+    # Attempt 4: Last-resort raw (might have been fixed since last probe)
     if [ "${RAW_GITHUB_OK:-unknown}" = "false" ]; then
         result=$(fetch_raw "$owner_repo" "HEAD" "SKILL.md") 2>/dev/null && { echo "$result"; return 0; }
+    fi
+
+    # ── Degraded fallback: try non-SKILL.md .md files (old-format repos) ───
+    local old_tree_body
+    old_tree_body=$(fetch_url_mirrored "$tree_url" "api") || true
+    if [ -n "$old_tree_body" ]; then
+        local md_paths
+        md_paths=$(echo "$old_tree_body" | "$PYTHON" -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    paths = []
+    for item in data.get('tree', []):
+        p = item.get('path', '')
+        if p.endswith('.md') and 'SKILL' not in p.upper():
+            score = 0
+            if '.claude/' in p or 'skills/' in p.lower() or 'Skill' in p: score = 2
+            elif '/' not in p: score = 1
+            paths.append((score, p))
+    paths.sort(key=lambda x: (-x[0], x[1].count('/'), len(x[1])))
+    for _, p in paths[:5]:
+        print(p)
+except: pass
+" 2>/dev/null)
+        if [ -n "$md_paths" ]; then
+            while IFS= read -r md_path; do
+                [ -z "$md_path" ] && continue
+                result=$(fetch_api "$owner_repo" "$md_path") 2>/dev/null || true
+                if [ -n "$result" ]; then
+                    echo "$result" | "$PYTHON" -c "
+import sys, json
+data = json.load(sys.stdin)
+data['format'] = 'legacy'
+data['source_file'] = '${md_path}'
+print(json.dumps(data))
+" 2>/dev/null && return 0
+                fi
+            done <<< "$md_paths"
+        fi
     fi
 
     json_err "all fetch tiers failed for ${owner_repo}"
