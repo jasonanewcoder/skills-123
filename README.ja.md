@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/%E4%BE%9D%E5%AD%98-%E3%82%BC%E3%83%AD-brightgreen.svg" alt="依存: ゼロ">
+  <img src="https://img.shields.io/badge/%E4%BE%9D%E5%AD%98-curl%2Bgit%2Bpython3-brightgreen.svg" alt="依存: curl + git + python3">
   <img src="https://img.shields.io/badge/%E3%82%BB%E3%82%AD%E3%83%A5%E3%83%AA%E3%83%86%E3%82%A3-%E3%82%B9%E3%82%AD%E3%83%A3%E3%83%B3%20%2B%20%E8%87%AA%E5%8B%95%E6%8B%92%E5%90%A6-red.svg" alt="セキュリティ: スキャン + 自動拒否">
 </p>
 
@@ -100,4 +100,4 @@ Claude Code を再起動。`skills-123` が有効に。
 
 5次元スコア（コミュニティ·最新性·作者·関連性·安全性）。22の重大パターン自動拒否。
 
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
+**jasonanewcoder, Codex, ChatGPT, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

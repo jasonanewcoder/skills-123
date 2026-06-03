@@ -63,6 +63,7 @@ MIRROR_CACHE="${MIRROR_CACHE_DIR}/mirrors.json"
 MIRROR_CACHE_TTL=21600  # 6 hours — mirrors are ephemeral; re-discover often
 NETWORK_PROFILE="${MIRROR_CACHE_DIR}/network-profile.json"
 NETWORK_PROFILE_TTL=86400  # 24 hours — network environment changes slowly
+RAW_GITHUB_OK="unknown"
 
 # ── Auto-detect restricted network ──────────────────────────────────────
 # If the user hasn't explicitly set CHINA_MODE, probe the network to
@@ -80,11 +81,13 @@ auto_detect_network() {
     # Check cache
     if [ -f "$NETWORK_PROFILE" ]; then
         local cache_age
-        cache_age=$(($(date +%s) - $(date -r "$NETWORK_PROFILE" +%s 2>/dev/null || printf "99999")))
+        cache_age=$(($(timestamp_now) - $(timestamp_from_file "$NETWORK_PROFILE")))
         if [ "${cache_age:-99999}" -lt "$NETWORK_PROFILE_TTL" ] 2>/dev/null; then
             # Read cached china_mode with grep (avoids Python Windows path issues)
             local cached_mode
             cached_mode=$(grep -o '"china_mode":[0-9]*' "$NETWORK_PROFILE" 2>/dev/null | grep -o '[0-9]*' || echo "0")
+            RAW_GITHUB_OK=$(grep -o '"raw_ok":\(true\|false\)' "$NETWORK_PROFILE" 2>/dev/null | sed 's/.*://' || echo "unknown")
+            [ -n "$RAW_GITHUB_OK" ] || RAW_GITHUB_OK="unknown"
             if [ "$cached_mode" = "1" ]; then
                 CHINA_MODE=1
                 SKILLS_SEARCH_BING=1
@@ -105,6 +108,7 @@ auto_detect_network() {
     if [ "$raw_code" = "200" ]; then
         raw_ok=true
     fi
+    RAW_GITHUB_OK="$raw_ok"
 
     # Probe 2: cn.bing.com (China-accessible search engine)
     local bing_code
@@ -124,7 +128,7 @@ auto_detect_network() {
     # ── Cache the result ─────────────────────────────────────────────────
     mkdir -p "$MIRROR_CACHE_DIR" 2>/dev/null || true
     local _ts
-    _ts=$(date -Iseconds 2>/dev/null || date +%Y-%m-%dT%H:%M:%S%z 2>/dev/null || echo "")
+    _ts=$(iso_timestamp)
     printf '{"china_mode":%s,"raw_ok":%s,"bing_ok":%s,"detected_at":"%s"}\n' \
         "$CHINA_MODE" "$raw_ok" "$bing_ok" "$_ts" > "$NETWORK_PROFILE" 2>/dev/null || true
 }
@@ -143,7 +147,7 @@ discover_mirrors() {
     # ── 1. Check cache ──────────────────────────────────────────────────
     if [ -f "$MIRROR_CACHE" ]; then
         local cache_age
-        cache_age=$(($(date +%s) - $(date -r "$MIRROR_CACHE" +%s 2>/dev/null || printf "99999")))
+        cache_age=$(($(timestamp_now) - $(timestamp_from_file "$MIRROR_CACHE")))
         if [ "${cache_age:-99999}" -lt "$MIRROR_CACHE_TTL" ] 2>/dev/null; then
             # Read cached mirrors for this type
             local cached
@@ -343,9 +347,9 @@ for m in working:
 # On Windows (Git Bash) and some Linux distros, python3 may be "python".
 # Detect the available interpreter once and use it everywhere.
 PYTHON=""
-if command -v python3 &>/dev/null; then
+if command -v python3 >/dev/null 2>&1; then
     PYTHON="python3"
-elif command -v python &>/dev/null; then
+elif command -v python >/dev/null 2>&1; then
     # Verify it's Python 3, not Python 2
     if python -c "import sys; sys.exit(0 if sys.version_info[0] >= 3 else 1)" 2>/dev/null; then
         PYTHON="python"
@@ -356,6 +360,23 @@ if [ -z "$PYTHON" ]; then
     echo '{"ok":false,"error":"python3/python not found in PATH — required by fetch-local.sh"}' >&2
     exit 1
 fi
+
+# ── Cross-platform helpers ────────────────────────────────────────────────
+# Bash timestamp: use Python for consistency across BSD/GNU/macOS.
+# BSD date uses `-r file`, GNU uses `-d @epoch`. Python is the same everywhere.
+timestamp_now() {
+    "$PYTHON" -c "import time; print(int(time.time()))"
+}
+
+timestamp_from_file() {
+    local f="$1"
+    "$PYTHON" -c "import os, sys; print(int(os.path.getmtime(sys.argv[1])))" "$f" 2>/dev/null || echo "0"
+}
+
+# ISO timestamp for cache files (cross-platform)
+iso_timestamp() {
+    "$PYTHON" -c "import datetime; print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S%z'))" 2>/dev/null || echo ""
+}
 
 # ── Run network auto-detection (now that Python is available) ──────────
 auto_detect_network
@@ -384,6 +405,7 @@ fetch_url() {
     local extra_flags="${2:-}"
     if [ -n "$GITHUB_TOKEN" ]; then
         curl -sS -L \
+            --connect-timeout 5 \
             --max-time "$TIMEOUT" \
             --retry "$RETRIES" \
             --retry-delay 1 \
@@ -394,6 +416,7 @@ fetch_url() {
             "$url" 2>/dev/null
     else
         curl -sS -L \
+            --connect-timeout 5 \
             --max-time "$TIMEOUT" \
             --retry "$RETRIES" \
             --retry-delay 1 \
@@ -409,7 +432,7 @@ generate_mirror_urls() {
     local original_url="$1"
     local mirror_type="$2"   # "raw" or "api"
 
-    local mirrors=()
+    local mirrors=""
     local host path
 
     # Determine original host based on type
@@ -425,11 +448,17 @@ generate_mirror_urls() {
     path=$(echo "$original_url" | sed "s|https://${host}||")
 
     # 1. User-configured host-replacement mirror
-    local user_mirror_var="SKILLS_MIRROR_${mirror_type^^}"  # raw→RAW, api→API
+    local user_mirror_var
+    case "$mirror_type" in
+        raw) user_mirror_var="SKILLS_MIRROR_RAW" ;;
+        api) user_mirror_var="SKILLS_MIRROR_API" ;;
+        *) return ;;
+    esac
     local user_mirror
-    user_mirror=$(eval "echo \${${user_mirror_var}:-}")
+    user_mirror=$(eval "printf '%s' \"\${${user_mirror_var}:-}\"")
     if [ -n "$user_mirror" ]; then
-        mirrors+=("https://${user_mirror}${path}")
+        mirrors="${mirrors}https://${user_mirror}${path}
+"
     fi
 
     # 2. Discovered mirrors (when CHINA_MODE=1 or user configured mirrors)
@@ -443,16 +472,20 @@ generate_mirror_urls() {
                 if [ "$mirror_host" = "$user_mirror" ]; then continue; fi
 
                 if [ "$mirror_style" = "prefix-proxy" ]; then
-                    mirrors+=("https://${mirror_host}/https://${host}${path}")
+                    mirrors="${mirrors}https://${mirror_host}/https://${host}${path}
+"
                 else
                     # Default: host-replace style
-                    mirrors+=("https://${mirror_host}${path}")
+                    mirrors="${mirrors}https://${mirror_host}${path}
+"
                 fi
             done <<< "$discovered"
         fi
     fi
 
-    printf '%s\n' "${mirrors[@]}"
+    if [ -n "$mirrors" ]; then
+        printf '%s' "$mirrors"
+    fi
 }
 
 # Fetch a URL with mirror fallback chain (for China/unreachable scenarios)
@@ -464,6 +497,9 @@ fetch_url_mirrored() {
     # Try direct first
     local body
     body=$(fetch_url "$url" "$extra_flags") || true
+    if [ "$mirror_type" = "raw" ] && [ -z "$body" ]; then
+        RAW_GITHUB_OK=false
+    fi
     if [ -n "$body" ] && ! is_error_page "$body"; then
         echo "$body"
         return 0
@@ -501,11 +537,19 @@ sys.exit(1)
     return 1
 }
 
+raw_github_unavailable() {
+    [ "${RAW_GITHUB_OK:-unknown}" = "false" ] && \
+        [ "$CHINA_MODE" != "1" ] && \
+        [ -z "$SKILLS_MIRROR_RAW" ]
+}
+
 # ── Tier 1: Raw content from raw.githubusercontent.com ───────────────────────
 fetch_raw() {
     local owner_repo="$1"   # e.g. "daymade/claude-code-skills"
     local ref="${2:-main}"  # branch or HEAD
     local file="${3:-SKILL.md}"
+
+    raw_github_unavailable && return 1
 
     local url="https://raw.githubusercontent.com/${owner_repo}/${ref}/${file}"
     local body
@@ -515,18 +559,22 @@ fetch_raw() {
         json_ok "$body"
         return 0
     fi
+    raw_github_unavailable && return 1
 
     # If HEAD failed, try main
     if [ "$ref" = "HEAD" ]; then
+        raw_github_unavailable && return 1
         url="https://raw.githubusercontent.com/${owner_repo}/main/${file}"
         body=$(fetch_url_mirrored "$url" "raw") || true
         if [ -n "$body" ] && ! is_error_page "$body"; then
             json_ok "$body"
             return 0
         fi
+        raw_github_unavailable && return 1
     fi
 
     # If main failed, try master
+    raw_github_unavailable && return 1
     url="https://raw.githubusercontent.com/${owner_repo}/master/${file}"
     body=$(fetch_url_mirrored "$url" "raw") || true
     if [ -n "$body" ] && ! is_error_page "$body"; then
@@ -585,59 +633,160 @@ if isinstance(data, dict) and 'content' in data:
 }
 
 # ── Tier 1-3 combined: Multi-tier SKILL.md fetch ─────────────────────────────
+# Strategy: when raw.githubusercontent.com is known-unavailable (cached), skip
+# slow raw timeouts and go directly to API. When raw status is unknown, try both
+# in parallel for speed.
 fetch_skill() {
     local owner_repo="$1"
     local ref="${2:-HEAD}"
 
-    local result
+    # Validate input
+    if [ -z "$owner_repo" ] || [ "$owner_repo" = "/" ]; then
+        json_err "empty or invalid owner/repo"
+        return 1
+    fi
 
-    # Tier 1: raw with HEAD
-    result=$(fetch_raw "$owner_repo" "$ref" "SKILL.md") && { echo "$result"; return 0; }
-
-    # Tier 2: raw with common skill subpaths
     local skill_name
     skill_name=$(echo "$owner_repo" | sed 's|.*/||')
+    if [ -z "$skill_name" ]; then
+        json_err "could not extract repo name from '${owner_repo}'"
+        return 1
+    fi
 
-    for subpath in \
-        "skills/${skill_name}/SKILL.md" \
-        "skills/default/SKILL.md" \
-        "skill/SKILL.md" \
-        ".claude/skills/${skill_name}/SKILL.md" \
-        "SKILL.md"; do
+    local result
 
-        # Try raw first (faster, no rate limit)
-        result=$(fetch_raw "$owner_repo" "HEAD" "$subpath") && { echo "$result"; return 0; }
-        # Then API (can find files at any path)
-        result=$(fetch_api "$owner_repo" "$subpath") && { echo "$result"; return 0; }
-    done
+    # ── Fast path: raw known-good → try raw first (no rate limit) ────────────
+    if [ "${RAW_GITHUB_OK:-unknown}" != "false" ]; then
+        # Try raw HEAD for SKILL.md
+        result=$(fetch_raw "$owner_repo" "$ref" "SKILL.md") 2>/dev/null && { echo "$result"; return 0; }
 
-    # Tier 3: Try api.github.com for root SKILL.md
-    result=$(fetch_api "$owner_repo" "SKILL.md") && { echo "$result"; return 0; }
+        # Try raw with common subpaths
+        for subpath in \
+            "skills/${skill_name}/SKILL.md" \
+            "skills/default/SKILL.md" \
+            "skill/SKILL.md" \
+            ".claude/skills/${skill_name}/SKILL.md" \
+            "SKILL.md"; do
+            result=$(fetch_raw "$owner_repo" "HEAD" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
+        done
+    fi
 
-    # Tier 4: Try to list repo contents to find SKILL.md location
+    # ── API-first path (main path when raw is blocked) ───────────────────────
+    # Try recursive tree FIRST — one API call finds the exact path, then one
+    # more API call fetches it. More efficient than guessing paths when
+    # raw.githubusercontent.com is down.
+
+    # Attempt 1: API recursive tree to find SKILL.md path
     local tree_url="https://api.github.com/repos/${owner_repo}/git/trees/HEAD?recursive=1"
     local tree_body
     tree_body=$(fetch_url_mirrored "$tree_url" "api") || true
     if [ -n "$tree_body" ]; then
-        local skill_path
-        skill_path=$(echo "$tree_body" | "$PYTHON" -c "
+        # Extract ALL SKILL.md paths from the tree (not just first)
+        local skill_paths
+        skill_paths=$(echo "$tree_body" | "$PYTHON" -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
+    paths = []
     for item in data.get('tree', []):
-        if item.get('path', '').endswith('SKILL.md'):
-            print(item['path'])
-            break
+        p = item.get('path', '')
+        if p.endswith('SKILL.md'):
+            paths.append(p)
+    # Sort: prefer root or skills/<name>/SKILL.md over nested paths
+    paths.sort(key=lambda p: (p.count('/'), len(p)))
+    for p in paths:
+        print(p)
 except: pass
 " 2>/dev/null || echo "")
-        if [ -n "$skill_path" ]; then
-            result=$(fetch_api "$owner_repo" "$skill_path") && { echo "$result"; return 0; }
-            result=$(fetch_raw "$owner_repo" "HEAD" "$skill_path") && { echo "$result"; return 0; }
+        if [ -n "$skill_paths" ]; then
+            while IFS= read -r skill_path; do
+                [ -z "$skill_path" ] && continue
+                # Try API content (works even when raw is blocked)
+                result=$(fetch_api "$owner_repo" "$skill_path") 2>/dev/null && { echo "$result"; return 0; }
+                # Fallback: try raw (might work via mirror)
+                result=$(fetch_raw "$owner_repo" "HEAD" "$skill_path") 2>/dev/null && { echo "$result"; return 0; }
+            done <<< "$skill_paths"
         fi
+    fi
+
+    # Attempt 2: Direct API content for common paths (tree might be too large)
+    for subpath in \
+        "SKILL.md" \
+        "skills/${skill_name}/SKILL.md" \
+        "skill/SKILL.md" \
+        "skills/default/SKILL.md" \
+        ".claude/skills/${skill_name}/SKILL.md"; do
+        result=$(fetch_api "$owner_repo" "$subpath") 2>/dev/null && { echo "$result"; return 0; }
+    done
+
+    # Attempt 3: Last-resort raw (might have been fixed since last probe)
+    if [ "${RAW_GITHUB_OK:-unknown}" = "false" ]; then
+        result=$(fetch_raw "$owner_repo" "HEAD" "SKILL.md") 2>/dev/null && { echo "$result"; return 0; }
     fi
 
     json_err "all fetch tiers failed for ${owner_repo}"
     return 1
+}
+
+# ── GitHub Web Search (no auth, scrapes github.com/search) ──────────────────
+# Last-resort fallback when API is rate-limited. Parses GitHub's HTML search
+# results page. Brittle but better than nothing.
+fetch_search_web() {
+    local keywords="$1"
+
+    local encoded
+    encoded=$(echo "$keywords" | "$PYTHON" -c "
+import sys, urllib.parse
+kw = sys.stdin.read().strip()
+q = f'{kw} Claude Code skill'
+print(urllib.parse.quote(q))
+" 2>/dev/null || echo "")
+
+    if [ -z "$encoded" ]; then
+        return 1
+    fi
+
+    local url="https://github.com/search?q=${encoded}&type=repositories&s=stars&o=desc"
+    local body
+    body=$(fetch_url "$url") || true
+
+    if [ -z "$body" ]; then
+        return 1
+    fi
+
+    # Extract repo names from GitHub search result HTML
+    echo "$body" | "$PYTHON" -c "
+import sys, re, json
+html = sys.stdin.read()
+# GitHub search results: links like /owner/repo in h3 or a tags
+pattern = r'href=[\"'](/[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?/[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?)[\"']'
+matches = re.findall(pattern, html)
+seen = set()
+results = []
+for path in matches:
+    full = path.strip('/')
+    parts = full.split('/')
+    if len(parts) != 2: continue
+    owner, repo = parts
+    # Skip non-repo pages
+    if owner in ('search', 'settings', 'notifications', 'explore', 'marketplace',
+                 'topics', 'collections', 'trending', 'new', 'organizations',
+                 'pulls', 'issues', 'login', 'signup', 'features', 'mobile',
+                 'readme', 'security', 'pricing', 'enterprise', 'team'):
+        continue
+    repo_full = f'{owner}/{repo}'
+    if repo_full in seen: continue
+    seen.add(repo_full)
+    results.append({
+        'repo': repo_full,
+        'url': f'https://github.com/{repo_full}',
+        'stars': 0,
+        'desc': '',
+        'topics': [],
+        'updated': '',
+    })
+print(json.dumps(results[:10], ensure_ascii=False))
+" 2>/dev/null || echo "[]"
 }
 
 # ── GitHub Repository Search (no auth needed) ────────────────────────────────
@@ -668,6 +817,13 @@ print(urllib.parse.quote(q))
     fi
 
     if echo "$body" | grep -q "API rate limit exceeded"; then
+        # Try web-scrape fallback before giving up
+        local web_results
+        web_results=$(fetch_search_web "$keywords") || true
+        if [ -n "$web_results" ]; then
+            json_ok_raw "$web_results"
+            return 0
+        fi
         json_err "GitHub API rate limit exceeded. Set GITHUB_TOKEN for 5000 req/hr."
         return 1
     fi
@@ -862,11 +1018,12 @@ fetch_awesome() {
         fi
         if [ -n "$body" ] && [ ${#body} -gt 100 ]; then
             local repos
-            repos=$(echo "$body" | grep -oE 'https://github\.com/[\w.-]+/[\w.-]+' | sort -u | head -20 | "$PYTHON" -c "
+            repos=$(echo "$body" | { grep -oE 'https://github\.com/[\w.-]+/[\w.-]+' || true; } | sort -u | head -20 | "$PYTHON" -c "
 import sys, json
 lines = [l.strip() for l in sys.stdin if l.strip()]
 print(json.dumps(lines, ensure_ascii=False))
-" 2>/dev/null || echo "[]")
+" 2>/dev/null)
+            [ -n "$repos" ] || repos="[]"
 
             if [ "$first" = false ]; then results+=","; fi
             first=false
@@ -894,7 +1051,7 @@ fetch_check() {
 
         # Test raw mirrors via discovery
         local discovered
-        discovered=$(discover_mirrors "raw" 2>/dev/null)
+        discovered=$(discover_mirrors "raw" 2>/dev/null || true)
         if [ -n "$discovered" ]; then
             while IFS='|' read -r mirror_host mirror_style; do
                 [ -z "$mirror_host" ] && continue
@@ -930,7 +1087,7 @@ fetch_check() {
 
         # Test API mirrors via discovery
         local discovered_api
-        discovered_api=$(discover_mirrors "api" 2>/dev/null)
+        discovered_api=$(discover_mirrors "api" 2>/dev/null || true)
         if [ -n "$discovered_api" ]; then
             while IFS='|' read -r mirror_host mirror_style; do
                 [ -z "$mirror_host" ] && continue

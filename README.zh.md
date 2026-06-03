@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/%E4%BE%9D%E8%B5%96-%E9%9B%B6-brightgreen.svg" alt="依赖: 零">
+  <img src="https://img.shields.io/badge/%E4%BE%9D%E8%B5%96-curl%2Bgit%2Bpython3-brightgreen.svg" alt="依赖: curl + git + python3">
   <img src="https://img.shields.io/badge/%E5%AE%89%E5%85%A8-%E6%89%AB%E6%8F%8F%20%2B%20%E8%87%AA%E5%8A%A8%E6%8B%92%E7%BB%9D-red.svg" alt="安全: 扫描 + 自动拒绝">
 </p>
 
@@ -218,7 +218,7 @@ skills-123/
 | | skills-123 | find-skills | superskillret |
 |:---|:---:|:---:|:---:|
 | **形态** | 原生技能（对话内） | npm CLI | 守护进程 (~1.4 GB) |
-| **依赖** | **curl + git 而已** | Node.js | Python + ONNX |
+| **依赖** | **curl + git + python3** | Node.js | Python + ONNX |
 | **触发** | **自动——任务意图** | 手动 CLI | 每次 prompt |
 | **Proxy 模式** | ✅（直接读技能） | ❌ | ❌ |
 | **语言** | **5** | 1 | 1 |
@@ -231,4 +231,4 @@ skills-123/
 
 ## 👥 作者 · 📄 许可证
 
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
+**jasonanewcoder, Codex, ChatGPT, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

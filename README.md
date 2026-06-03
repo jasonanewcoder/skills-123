@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   <img src="https://img.shields.io/badge/platform-Claude%20Code%20%7C%20Codex%20%7C%20Cursor%20%7C%20Coze%20%7C%20Windsurf%20%7C%20Gemini%20%7C%20OpenCode%20%7C%20Aider-purple" alt="Platforms">
-  <img src="https://img.shields.io/badge/dependencies-zero-brightgreen.svg" alt="Dependencies: Zero">
+  <img src="https://img.shields.io/badge/dependencies-curl%2Bgit%2Bpython3-brightgreen.svg" alt="Dependencies: curl + git + python3">
   <img src="https://img.shields.io/badge/security-scan%20%2B%20auto--reject-red.svg" alt="Security: Scan + Auto-reject">
 </p>
 
@@ -217,7 +217,7 @@ skills-123/
 | | skills-123 | find-skills | superskillret |
 |:---|:---:|:---:|:---:|
 | **Form** | Native skill (in-chat) | npm CLI | Daemon (~1.4 GB) |
-| **Deps** | **curl + git only** | Node.js | Python + ONNX |
+| **Deps** | **curl + git + python3** | Node.js | Python + ONNX |
 | **How it triggers** | **Automatic — task intent** | Manual CLI | Every prompt |
 | **Proxy mode** | ✅ (read skills directly) | ❌ | ❌ |
 | **Languages** | **5** | 1 | 1 |
@@ -230,4 +230,4 @@ skills-123/
 
 ## 👥 Authors · 📄 License
 
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
+**jasonanewcoder, Codex, ChatGPT, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

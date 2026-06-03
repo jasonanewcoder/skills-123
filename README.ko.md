@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/%EC%9D%98%EC%A1%B4%EC%84%B1-%EC%A0%9C%EB%A1%9C-brightgreen.svg" alt="의존성: 제로">
+  <img src="https://img.shields.io/badge/%EC%9D%98%EC%A1%B4%EC%84%B1-curl%2Bgit%2Bpython3-brightgreen.svg" alt="의존성: curl + git + python3">
   <img src="https://img.shields.io/badge/%EB%B3%B4%EC%95%88-%EC%8A%A4%EC%BA%94%20%2B%20%EC%9E%90%EB%8F%99%20%EA%B1%B0%EB%B6%80-red.svg" alt="보안: 스캔 + 자동 거부">
 </p>
 
@@ -100,4 +100,4 @@ Claude Code 재시작. `skills-123` 활성화.
 
 5차원 평가（커뮤니티·최신성·작성자·관련성·보안）. 22개 심각 패턴 자동 거부.
 
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
+**jasonanewcoder, Codex, ChatGPT, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)

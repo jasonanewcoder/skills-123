@@ -129,7 +129,7 @@ Fallback order (per candidate):
 Before using a skill's content, verify:
 
 1. **Has substance** — SKILL.md content > 200 characters (not just a stub)
-2. **No critical patterns** — scan for `curl | sh`, `eval $`, `rm -rf /`, `/dev/tcp/`, base64-to-pipe (see Security section below for full list)
+2. **No critical patterns in executable context** — scan with context-aware detection. Patterns inside markdown code blocks (```) are real threats; patterns on documentation lines (`Pattern:`, `Example:`, backtick-quoted) are educational and safe. See Security section below.
 3. **Some community signal** — stars > 0, OR from a known org/publisher (anthropics, vercel-labs, daymade, travisvn, obra…)
 
 **Fail any check → skip that skill, use the next candidate.** A bad skill is worse than no skill.
@@ -183,13 +183,15 @@ If 0 candidates: "No community skills found for **<topic>**. I can still help di
 
 These patterns apply to both Proxy (quality gate) and Install (auto-reject):
 
-**Critical — auto-reject:**
+**Critical — auto-reject (in executable context):**
 `curl | sh`, `wget | sh`, `eval $`, `eval "`, `base64 -d |`, `base64 --decode |`, `rm -rf /`, `rm -rf ~`, `/dev/tcp/`, `curl .env`, `curl credentials`, `os.system(` with variables, `subprocess.*shell=True`, `__import__('os')`, `exec(` with variables, excessively long base64 strings, zero-width characters.
+
+> Patterns in documentation context (`Pattern:`, `Example:`, markdown backticks) are classified as **doc_only** and do NOT trigger rejection. This prevents security-documentation skills from being falsely rejected.
 
 **Warning — flag for review:**
 `curl`, `wget`, `pip install`, `npm install -g`, `sudo`, `chmod 7..`, `chown`, `eval`, `exec`, `.env`, `credentials`, `secrets`.
 
-> See `references/safety-patterns.md` for the full detection methodology.
+> See `references/safety-patterns.md` for the full detection methodology including context-aware scanning.
 
 ---
 

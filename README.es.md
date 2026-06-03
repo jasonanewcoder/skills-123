@@ -4,7 +4,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
-  <img src="https://img.shields.io/badge/dependencias-cero-brightgreen.svg" alt="Dependencias: Cero">
+  <img src="https://img.shields.io/badge/dependencias-curl%2Bgit%2Bpython3-brightgreen.svg" alt="Dependencias: curl + git + python3">
   <img src="https://img.shields.io/badge/seguridad-escaneo%20%2B%20rechazo%20autom%C3%A1tico-red.svg" alt="Seguridad: Escaneo + Rechazo automático">
 </p>
 
@@ -100,4 +100,4 @@ Reinicia Claude Code. `skills-123` estará activo.
 
 Puntuación 5D (comunidad·actualidad·autor·relevancia·seguridad). 22 patrones críticos rechazados.
 
-**jasonanewcoder, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
+**jasonanewcoder, Codex, ChatGPT, Claude Code, DeepSeek** · MIT — [LICENSE](LICENSE)
